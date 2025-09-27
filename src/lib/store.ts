@@ -355,5 +355,3 @@ export const useInterviewStore = create<InterviewState>()(
     }
   )
 );
-
-    

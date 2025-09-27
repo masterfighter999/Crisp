@@ -45,7 +45,7 @@ export function InterviewerView() {
     // Admins see all candidates, others see only their company's candidates
     return candidates.filter(c => 
       c.interview.status === 'COMPLETED' && 
-      (companyDomain === 'admin' || c.companyDomain === companyDomain)
+      (companyDomain === 'admin' || (c.companyDomain && c.companyDomain === companyDomain))
     );
   }, [candidates, user]);
 
