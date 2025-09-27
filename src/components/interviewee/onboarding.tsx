@@ -103,21 +103,16 @@ export function Onboarding() {
                   });
               }
 
-              const updatedInfo = {
-                name: parsedData.name || form.getValues('name'),
-                email: tokenEmail, // Always keep the original email from token
-                phone: parsedData.phone || form.getValues('phone'),
-                resumeFile: fileDetails
-              };
+              // Use parsed data only if it exists, otherwise keep existing form value
+              const newName = parsedData.name || form.getValues('name');
+              const newPhone = parsedData.phone || form.getValues('phone');
               
-              // updateCandidateInfo is not strictly needed here anymore since onSubmit handles it,
-              // but we can pre-fill the form.
-              if (updatedInfo.name) form.setValue('name', updatedInfo.name);
-              if (updatedInfo.phone) form.setValue('phone', updatedInfo.phone);
+              if (newName) form.setValue('name', newName);
+              if (newPhone) form.setValue('phone', newPhone);
               
               toast({
-                title: 'Resume Parsed',
-                description: `Name: ${parsedData.name || 'Not found'}\nPhone: ${parsedData.phone || 'Not found'}`,
+                title: 'Resume Parsed Successfully',
+                description: `Name: ${newName || 'Not found'}\nPhone: ${newPhone || 'Not found'}`,
               });
             }
           } catch (error) {
@@ -191,7 +186,7 @@ export function Onboarding() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div>
+            <FormItem>
               <FormLabel>Resume (PDF required)</FormLabel>
               <div
                 className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10 cursor-pointer hover:border-primary transition-colors data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50"
@@ -237,8 +232,7 @@ export function Onboarding() {
                   </Button>
                 </div>
               )}
-            </div>
-
+            </FormItem>
             <FormField
               control={form.control}
               name="email"
