@@ -92,18 +92,31 @@ export function Onboarding() {
           const resumeDataUri = reader.result as string;
           try {
             const parsedData = await parseResumeAction({ resumeDataUri });
+            
             if (parsedData) {
+              const tokenEmail = form.getValues('email');
+              if (parsedData.email && parsedData.email.toLowerCase() !== tokenEmail.toLowerCase()) {
+                  toast({
+                      title: 'Email Mismatch',
+                      description: `The email on your resume (${parsedData.email}) doesn't match the invited email (${tokenEmail}). This is just a warning.`,
+                      variant: 'default'
+                  });
+              }
+
               const updatedInfo = {
                 name: parsedData.name || form.getValues('name'),
-                email: form.getValues('email'), // Keep the original email from token
+                email: tokenEmail, // Always keep the original email from token
                 phone: parsedData.phone || form.getValues('phone'),
                 resumeFile: fileDetails
               };
+              
               await updateCandidateInfo(activeCandidateId, updatedInfo);
+              
               if (parsedData.name) form.setValue('name', parsedData.name);
               if (parsedData.phone) form.setValue('phone', parsedData.phone);
-               toast({
-                title: 'Resume Parsed Successfully',
+              
+              toast({
+                title: 'Resume Parsed',
                 description: `Name: ${parsedData.name || 'Not found'}\nPhone: ${parsedData.phone || 'Not found'}`,
               });
             }
