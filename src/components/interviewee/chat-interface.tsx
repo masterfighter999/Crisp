@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useInterviewStore, INTERVIEW_SCHEDULE } from '@/lib/store';
@@ -36,6 +37,8 @@ export function ChatInterface() {
   const currentQuestionIndex = candidate?.interview.currentQuestionIndex ?? 0;
   const currentQuestion = candidate?.interview.questions[currentQuestionIndex];
   const scheduleItem = INTERVIEW_SCHEDULE[currentQuestionIndex];
+  const hasAnsweredCurrent = (candidate?.interview.answers.length ?? 0) > currentQuestionIndex;
+
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -46,23 +49,17 @@ export function ChatInterface() {
 
   const sendNextQuestion = async () => {
     if (!candidate || !scheduleItem) return;
-
-    if (currentQuestionIndex >= INTERVIEW_SCHEDULE.length) {
-      finalizeInterview();
-      return;
-    }
     
     setIsLoading(true);
     const newQuestion = await getInterviewQuestion({
       difficulty: scheduleItem.difficulty,
       topic: 'full stack',
-      type: scheduleItem.type,
+      type: 'text',
     });
     
-    if (newQuestion) {
+    if (newQuestion && newQuestion.question) {
         await addQuestion(candidate.id, newQuestion);
         await addAiChatMessage(candidate.id, newQuestion.question);
-        // Reset answer state for new question
         setUserAnswer('');
     } else {
         toast({
@@ -71,63 +68,82 @@ export function ChatInterface() {
             description: 'Could not generate a new question. Please try refreshing.'
         });
     }
-    setIsLoading(false);
+    // The isLoading state will be set to false in the useEffect that handles the new question
   };
   
   const handleAnswerSubmit = async () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    if (!candidate || !currentQuestion) return;
+    if (!candidate || !currentQuestion || isLoading) return;
 
     const answerToSubmit = userAnswer.trim() || "Time's up! No answer provided.";
     
     await addUserChatMessage(candidate.id, answerToSubmit);
     await submitAnswer(candidate.id, answerToSubmit);
-    // State will refresh via useEffect, triggering next question
+    // The state change will trigger the useEffect below to fetch the next question.
   };
 
+  // Effect to fetch the next question
   useEffect(() => {
     if (candidate?.interview.status === 'IN_PROGRESS') {
-      const hasAnsweredCurrent = candidate.interview.answers.length > currentQuestionIndex;
-      if (!hasAnsweredCurrent) {
-        // If there's no question for the current index, fetch one.
-        if (!candidate.interview.questions[currentQuestionIndex]) {
+      const answersCount = candidate.interview.answers.length;
+      const questionsCount = candidate.interview.questions.length;
+
+      // If we have an answer for every question we have, it's time to get a new one.
+      if (answersCount === questionsCount && questionsCount < INTERVIEW_SCHEDULE.length) {
           sendNextQuestion();
-        }
+      } else if (questionsCount === 0 && answersCount === 0) {
+        // Initial question fetch
+        sendNextQuestion();
       }
     }
-  }, [candidate?.id, currentQuestionIndex, candidate?.interview.answers.length]);
+  }, [candidate?.id, candidate?.interview.answers.length]);
 
 
+  // Effect to start timer when a new question is ready
   useEffect(() => {
-    if (currentQuestion && scheduleItem && !isLoading && candidate?.interview.answers.length === currentQuestionIndex) {
+    // A new question is ready if it exists and we haven't answered it yet.
+    if (currentQuestion && !hasAnsweredCurrent && candidate?.interview.status === 'IN_PROGRESS') {
+      setIsLoading(false); // Stop loading now that question is present
       const duration = scheduleItem.duration;
       setTimeLeft(duration);
+
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
             if(timerRef.current) clearInterval(timerRef.current);
-            handleAnswerSubmit(); // This will also trigger the next question via state change
+            handleAnswerSubmit();
             return 0;
           }
           return prev - 1;
         });
       }, 1000);
     }
+    
+    // Cleanup timer
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
     };
-  }, [currentQuestion, isLoading, candidate?.interview.answers.length]);
+  }, [currentQuestion, hasAnsweredCurrent, candidate?.id]);
   
   const finalizeInterview = async () => {
     if (!candidate || candidate.interview.status === 'COMPLETED') return;
-    setIsLoading(true);
-    await addAiChatMessage(candidate.id, 'Thank you for completing the interview. I am now generating your performance summary...');
+    
+    setIsLoading(true); // Show a finalizing message
+    
+    // Check if the finalization message is already there
+    const finalizingMessage = 'Thank you for completing the interview. I am now generating your performance summary...';
+    if (!candidate.interview.chatHistory.some(m => m.content === finalizingMessage)) {
+       await addAiChatMessage(candidate.id, finalizingMessage);
+    }
     
     const chatHistoryString = candidate.interview.chatHistory
       .map(msg => `${msg.role}: ${msg.content}`)
       .join('\n');
       
     const summaryData = await getInterviewSummary({ chatHistory: chatHistoryString });
+    
     if (summaryData) {
       await completeInterview(candidate.id, summaryData.summary, summaryData.finalScore);
     } else {
@@ -141,30 +157,36 @@ export function ChatInterface() {
     setIsLoading(false);
   };
   
+  // Effect to finalize the interview when all questions are answered
+  useEffect(() => {
+    if (candidate?.interview.status === 'IN_PROGRESS' && candidate.interview.answers.length === INTERVIEW_SCHEDULE.length) {
+      finalizeInterview();
+    }
+  }, [candidate?.interview.answers.length]);
+
+
   const progressPercentage = scheduleItem ? (timeLeft / scheduleItem.duration) * 100 : 0;
   
-  if (!candidate || (candidate.interview.status === 'IN_PROGRESS' && currentQuestionIndex >= INTERVIEW_SCHEDULE.length)) {
+  if (!candidate || (candidate.interview.status === 'IN_PROGRESS' && candidate.interview.answers.length === INTERVIEW_SCHEDULE.length)) {
       return (
-            <Card className="w-full max-w-3xl mx-auto mt-8">
-              <CardHeader className="text-center">
-                  <CardTitle>Finalizing Your Results</CardTitle>
-                  <CardDescription>
-                    The AI is analyzing your full interview transcript to generate a detailed performance summary and a final score. This may take a moment.
-                  </CardDescription>
-              </CardHeader>
-              <CardContent className="flex justify-center items-center h-96">
-                  <div className="flex flex-col items-center space-y-4 text-center">
-                      <Loader2 className="size-8 animate-spin text-primary" />
-                      <p className="text-muted-foreground max-w-md">
-                          Analyzing answers...
-                      </p>
-                  </div>
-              </CardContent>
-          </Card>
+          <Card className="w-full max-w-3xl mx-auto mt-8">
+            <CardHeader className="text-center">
+                <CardTitle>Finalizing Your Results</CardTitle>
+                <CardDescription>
+                  The AI is analyzing your full interview transcript to generate a detailed performance summary and a final score. This may take a moment.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center items-center h-96">
+                <div className="flex flex-col items-center space-y-4 text-center">
+                    <Loader2 className="size-8 animate-spin text-primary" />
+                    <p className="text-muted-foreground max-w-md">
+                        Analyzing answers...
+                    </p>
+                </div>
+            </CardContent>
+        </Card>
       );
   }
-
-  const isQuestionAnswered = candidate.interview.answers.length > currentQuestionIndex;
 
   return (
     <Card className="w-full max-w-3xl mx-auto mt-8">
@@ -184,13 +206,13 @@ export function ChatInterface() {
                     {candidate?.interview.chatHistory.map((message, index) => (
                         <ChatMessageItem key={index} message={message} />
                     ))}
-                    {isLoading && !currentQuestion && <LoadingSpinner />}
+                    {isLoading && <LoadingSpinner />}
                  </div>
             </ScrollArea>
         </div>
         
         <div className="mt-4">
-            {currentQuestion && (
+            {!isLoading && currentQuestion && (
               <>
                 <div className="flex items-center gap-4 mb-2">
                     <p className="text-sm font-medium">Time remaining: {timeLeft}s</p>
@@ -202,10 +224,10 @@ export function ChatInterface() {
                         value={userAnswer}
                         onChange={(e) => setUserAnswer(e.target.value)}
                         className="pr-20 min-h-[80px]"
-                        disabled={isLoading || isQuestionAnswered}
+                        disabled={hasAnsweredCurrent}
                     />
 
-                    <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={isLoading || isQuestionAnswered}>
+                    <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={hasAnsweredCurrent}>
                         <Send className="size-4" />
                     </Button>
                 </form>
@@ -254,3 +276,5 @@ function LoadingSpinner() {
         </div>
     )
 }
+
+    
