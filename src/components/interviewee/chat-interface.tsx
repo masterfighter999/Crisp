@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useEffect, useRef, FormEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent, useCallback } from 'react';
 import { useInterviewStore, INTERVIEW_SCHEDULE } from '@/lib/store';
 import { getInterviewSummary } from '@/app/actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -84,7 +84,7 @@ export function ChatInterface() {
     }
   };
   
-  const handleAnswerSubmit = async () => {
+  const handleAnswerSubmit = useCallback(async () => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (!candidate || !currentQuestion || isLoading || questionError) return;
 
@@ -92,7 +92,8 @@ export function ChatInterface() {
     
     await addUserChatMessage(candidate.id, answerToSubmit);
     await submitAnswer(candidate.id, answerToSubmit);
-  };
+  }, [candidate, currentQuestion, isLoading, questionError, userAnswer, addUserChatMessage, submitAnswer]);
+
 
   useEffect(() => {
     if (candidate?.interview.status === 'IN_PROGRESS') {
@@ -117,7 +118,6 @@ export function ChatInterface() {
         setTimeLeft((prev) => {
           if (prev <= 1) {
             if(timerRef.current) clearInterval(timerRef.current);
-            // This now just submits the answer, no direct state update in the callback
             handleAnswerSubmit();
             return 0;
           }
@@ -131,7 +131,7 @@ export function ChatInterface() {
         clearInterval(timerRef.current);
       }
     };
-  }, [currentQuestion, hasAnsweredCurrent, isLoading, candidate?.id, candidate?.interview.status]);
+  }, [currentQuestion, hasAnsweredCurrent, isLoading, candidate?.id, candidate?.interview.status, scheduleItem, handleAnswerSubmit]);
   
   const finalizeInterview = async () => {
     if (!candidate || candidate.interview.status === 'COMPLETED') return;
@@ -236,7 +236,7 @@ export function ChatInterface() {
                         disabled={hasAnsweredCurrent}
                     />
 
-                    <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={hasAnsweredCurrent}>
+                    <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={hasAnsweredCurrent} onClick={() => handleAnswerSubmit()}>
                         <Send className="size-4" />
                     </Button>
                 </form>
