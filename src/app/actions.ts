@@ -2,8 +2,7 @@
 'use server';
 
 import {
-  generateInterviewQuestion,
-  type GenerateInterviewQuestionInput,
+  generateInterviewQuestion
 } from '@/ai/flows/generate-interview-questions';
 import {
   promptForMissingInformation,
@@ -17,7 +16,7 @@ import {
   parseResume,
   type ParseResumeInput,
 } from '@/ai/flows/parse-resume';
-import type { InterviewQuestion } from '@/lib/types';
+import type { InterviewQuestion, GenerateInterviewQuestionInput } from '@/lib/types';
 
 
 export async function getInterviewQuestion(

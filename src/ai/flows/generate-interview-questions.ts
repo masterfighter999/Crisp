@@ -10,19 +10,8 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { GenerateInterviewQuestionInput, GenerateInterviewQuestionInputSchema } from '@/lib/types';
 
-export const GenerateInterviewQuestionInputSchema = z.object({
-  difficulty: z
-    .enum(['Easy', 'Medium', 'Hard'])
-    .describe('The difficulty level of the question.'),
-  topic: z
-    .string()
-    .default('full stack')
-    .describe('The topic of the interview question. Defaults to full stack.'),
-});
-export type GenerateInterviewQuestionInput = z.infer<
-  typeof GenerateInterviewQuestionInputSchema
->;
 
 export async function generateInterviewQuestion(
   input: GenerateInterviewQuestionInput
