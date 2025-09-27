@@ -51,8 +51,10 @@ export function ChatInterface() {
 
 
   const sendNextQuestion = useCallback(async () => {
-    if (!candidate || !scheduleItem || isFetchingQuestion) return;
+    if (!candidate || isFetchingQuestion) return;
 
+    // Strict guard: Only fetch a new question if the number of questions and answers are equal.
+    // This means the user has answered the last question and is ready for a new one.
     if (candidate.interview.questions.length !== candidate.interview.answers.length) {
       return;
     }
@@ -119,7 +121,7 @@ export function ChatInterface() {
     ) {
       sendNextQuestion();
     }
-  }, [candidate?.interview.answers.length, sendNextQuestion, candidate?.interview.status]);
+  }, [candidate?.interview.status, candidate?.interview.answers.length, sendNextQuestion]);
 
 
   useEffect(() => {
@@ -147,7 +149,7 @@ export function ChatInterface() {
   }, [currentQuestion, hasAnsweredCurrent, isLoading, candidate?.id, candidate?.interview.status, scheduleItem, handleAnswerSubmit]);
   
   const finalizeInterview = useCallback(async () => {
-    if (!candidate || candidate.interview.status === 'COMPLETED') return;
+    if (!candidate || candidate.interview.status === 'COMPLETED' || isLoading) return;
     
     setIsLoading(true);
     
@@ -173,7 +175,7 @@ export function ChatInterface() {
         await completeInterview(candidate.id, 'Error generating summary.', 0);
     }
     setIsLoading(false);
-  }, [candidate, addAiChatMessage, completeInterview, toast]);
+  }, [candidate, addAiChatMessage, completeInterview, toast, isLoading]);
   
   useEffect(() => {
     if (candidate?.interview.status === 'IN_PROGRESS' && candidate.interview.answers.length === INTERVIEW_SCHEDULE.length) {
@@ -184,7 +186,11 @@ export function ChatInterface() {
 
   const progressPercentage = scheduleItem ? (timeLeft / scheduleItem.duration) * 100 : 0;
   
-  if (!candidate || (candidate.interview.status === 'IN_PROGRESS' && candidate.interview.answers.length === INTERVIEW_SCHEDULE.length && !isLoading)) {
+  if (!candidate) {
+    return null; // or a loading state
+  }
+
+  if (candidate.interview.status === 'IN_PROGRESS' && candidate.interview.answers.length === INTERVIEW_SCHEDULE.length) {
       return (
           <Card className="w-full max-w-3xl mx-auto mt-8">
             <CardHeader className="text-center">
@@ -211,16 +217,16 @@ export function ChatInterface() {
         <CardTitle>Interview in Progress</CardTitle>
         <div className="pt-4">
             <p className="text-sm text-muted-foreground mb-2">
-                Question {currentQuestionIndex + 1} of {INTERVIEW_SCHEDULE.length} ({scheduleItem?.difficulty})
+                Question {(candidate.interview.answers.length ?? 0) + 1} of {INTERVIEW_SCHEDULE.length} ({scheduleItem?.difficulty})
             </p>
-            <Progress value={((currentQuestionIndex) / INTERVIEW_SCHEDULE.length) * 100} />
+            <Progress value={(((candidate.interview.answers.length ?? 0)) / INTERVIEW_SCHEDULE.length) * 100} />
         </div>
       </CardHeader>
       <CardContent>
         <div className="bg-muted/30 dark:bg-muted/20 p-4 rounded-lg h-96 flex flex-col">
             <ScrollArea className="flex-grow pr-4" ref={scrollAreaRef}>
                  <div className="space-y-6">
-                    {candidate?.interview.chatHistory.map((message, index) => (
+                    {candidate.interview.chatHistory.map((message, index) => (
                         <ChatMessageItem key={index} message={message} />
                     ))}
                     {isLoading && <LoadingSpinner />}
@@ -298,3 +304,5 @@ function LoadingSpinner() {
         </div>
     )
 }
+
+    
