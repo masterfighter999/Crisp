@@ -2,7 +2,7 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import { firestore } from '@/lib/firebase';
-import { collection, addDoc, getDocs, query, where, Timestamp, orderBy } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, Timestamp, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud, File, X, Copy } from 'lucide-react';
+import { Loader2, UploadCloud, File, X, Copy, Trash2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -22,12 +22,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
 });
 
 interface TokenEntry {
+  id: string;
   email: string;
   token: string;
 }
@@ -50,7 +62,7 @@ export function AddCandidate() {
         const tokensCollection = collection(firestore, 'interviewTokens');
         const q = query(tokensCollection, orderBy('createdAt', 'desc'));
         const querySnapshot = await getDocs(q);
-        const tokens = querySnapshot.docs.map(doc => doc.data() as TokenEntry);
+        const tokens = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as TokenEntry));
         setGeneratedTokens(tokens);
       } catch (error) {
         console.error("Error fetching tokens: ", error);
@@ -66,7 +78,7 @@ export function AddCandidate() {
     fetchTokens();
   }, [toast]);
 
-  const addEmailAndGenerateToken = async (email: string) => {
+  const addEmailAndGenerateToken = async (email: string): Promise<TokenEntry | null> => {
     if (!email) return null;
 
     const tokensCollection = collection(firestore, 'interviewTokens');
@@ -84,13 +96,13 @@ export function AddCandidate() {
 
     const token = uuidv4();
     try {
-      await addDoc(tokensCollection, {
+      const docRef = await addDoc(tokensCollection, {
         email,
         token,
         createdAt: Timestamp.now(),
         isValid: true,
       });
-      return { email, token };
+      return { id: docRef.id, email, token };
     } catch (error) {
       console.error('Error adding document: ', error);
       toast({
@@ -101,6 +113,27 @@ export function AddCandidate() {
       return null;
     }
   };
+  
+  const handleDeleteToken = async (tokenId: string) => {
+    setIsLoading(true);
+    try {
+        await deleteDoc(doc(firestore, 'interviewTokens', tokenId));
+        setGeneratedTokens(prev => prev.filter(t => t.id !== tokenId));
+        toast({
+            title: 'Token Deleted',
+            description: 'The token has been successfully removed.',
+        });
+    } catch (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Error Deleting Token',
+            description: 'Could not remove the token from the database.',
+        });
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
@@ -215,15 +248,36 @@ export function AddCandidate() {
                   <TableRow>
                     <TableHead>Email</TableHead>
                     <TableHead>Token</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {generatedTokens.map(({ email, token }) => (
-                    <TableRow key={token}>
+                  {generatedTokens.map(({ id, email, token }) => (
+                    <TableRow key={id}>
                       <TableCell>{email}</TableCell>
                       <TableCell className="font-mono">{token}</TableCell>
                       <TableCell className="text-right">
+                         <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" disabled={isLoading}>
+                              <Trash2 className="size-4 text-destructive"/>
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete the token for {email}. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteToken(id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                         <Button variant="ghost" size="icon" onClick={() => copyToClipboard(token)}>
                           <Copy className="size-4"/>
                         </Button>
