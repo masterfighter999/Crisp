@@ -5,12 +5,14 @@ import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useInterviewStore } from '@/lib/store';
 
 const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) => {
   const Wrapper = (props: P) => {
     const { user, loading } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
+    const activeToken = useInterviewStore(s => s.activeToken);
 
     useEffect(() => {
       if (loading) return;
@@ -32,8 +34,12 @@ const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) =>
         if(!isAnonymous && isCandidateRoute) {
             router.push('/dashboard');
         }
+        // If user is anonymous but has no token for the interview page
+        if(isAnonymous && isCandidateRoute && !activeToken) {
+          router.push('/');
+        }
       }
-    }, [user, loading, router, pathname]);
+    }, [user, loading, router, pathname, activeToken]);
 
     if (loading || !user) {
        return (
