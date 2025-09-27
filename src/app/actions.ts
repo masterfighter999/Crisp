@@ -28,7 +28,6 @@ async function fetchQuestionFromDb(difficulty: 'Easy' | 'Medium' | 'Hard'): Prom
     const querySnapshot = await getDocs(q);
     
     if (querySnapshot.empty) {
-      console.warn(`No questions found in Firestore for difficulty: ${difficulty}`);
       // Return null to indicate no questions were found.
       return null;
     }
@@ -49,8 +48,8 @@ async function fetchQuestionFromDb(difficulty: 'Easy' | 'Medium' | 'Hard'): Prom
     };
   } catch (error) {
     console.error('Error fetching question from Firestore:', error);
-    // Propagate a more specific error.
-    throw new Error('Could not fetch questions from the database. Please check Firestore permissions and collection name.');
+    // If there's an error fetching, we can treat it as "no question found" and let the AI handle it.
+    return null;
   }
 }
 
@@ -64,14 +63,19 @@ export async function getInterviewQuestion(
       return dbQuestion;
     }
 
-    // If we are here, it means no questions were found for the given difficulty.
-    // Instead of falling back to AI, we now throw a clear error.
-    throw new Error(`No interview questions found in the database for '${input.difficulty}' difficulty.`);
+    // Fallback to AI if no question is found in the database
+    console.warn(`No questions found in Firestore for difficulty: ${input.difficulty}. Falling back to AI generation.`);
+    const aiQuestionText = await generateInterviewQuestion(input);
+    return {
+      type: 'text',
+      difficulty: input.difficulty,
+      question: aiQuestionText,
+    };
 
   } catch (error: any) {
-    console.error('Error in getInterviewQuestion:', error);
-    // Rethrow the original error or a generic one to be caught by the UI.
-    throw new Error(error.message || "Sorry, I could not get a question.");
+    console.error('Critical error in getInterviewQuestion:', error);
+    // In case of a critical failure (e.g., AI service is down), rethrow to let the UI handle it.
+    throw new Error("Sorry, I could not get a question at this time. Please try again.");
   }
 }
 

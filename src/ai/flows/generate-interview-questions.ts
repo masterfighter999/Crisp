@@ -27,6 +27,26 @@ const generateInterviewQuestionPrompt = ai.definePrompt({
 The question should be relevant to a full stack developer role using React and Node.js.
 Return only the question text, with no preamble or other text.
 `,
+  config: {
+    safetySettings: [
+      {
+        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+        threshold: 'BLOCK_NONE',
+      },
+      {
+        category: 'HARM_CATEGORY_HARASSMENT',
+        threshold: 'BLOCK_NONE',
+      },
+      {
+        category: 'HARM_CATEGORY_HATE_SPEECH',
+        threshold: 'BLOCK_NONE',
+      },
+      {
+        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+        threshold: 'BLOCK_NONE',
+      },
+    ],
+  }
 });
 
 const generateInterviewQuestionFlow = ai.defineFlow(
