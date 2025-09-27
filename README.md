@@ -4,7 +4,7 @@ AI Interview Ace is a web application designed to streamline the technical scree
 
 ## Live Demo
 
-[View the live deployment here](https://ai-interview-h56sw64j4-masterfighter999s-projects.vercel.app/)
+[View the live deployment here](https://ai-interview-n8xeppr97-masterfighter999s-projects.vercel.app/)
 
 ## Key Features
 
