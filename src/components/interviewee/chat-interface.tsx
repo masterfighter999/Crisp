@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Bot, User, Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import type { ChatMessage, InterviewQuestion } from '@/lib/types';
+import type { ChatMessage } from '@/lib/types';
 
 export function ChatInterface() {
   const {
@@ -26,8 +26,9 @@ export function ChatInterface() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
-  const [timeLeft, setTimeLeft] = useState(100);
-  
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [questionError, setQuestionError] = useState(false);
+
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -49,31 +50,33 @@ export function ChatInterface() {
 
   const sendNextQuestion = async () => {
     if (!candidate || !scheduleItem) return;
-    
+
     setIsLoading(true);
-    const newQuestion = await getInterviewQuestion({
-      difficulty: scheduleItem.difficulty,
-      topic: 'full stack',
-      type: 'text',
-    });
-    
-    if (newQuestion && newQuestion.question) {
-        await addQuestion(candidate.id, newQuestion);
-        await addAiChatMessage(candidate.id, newQuestion.question);
-        setUserAnswer('');
-    } else {
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Could not generate a new question. Please try refreshing.'
-        });
+    setQuestionError(false);
+
+    try {
+      const newQuestion = await getInterviewQuestion({
+        difficulty: scheduleItem.difficulty,
+        topic: 'full stack',
+      });
+      await addQuestion(candidate.id, newQuestion);
+      await addAiChatMessage(candidate.id, newQuestion.question);
+      setUserAnswer('');
+    } catch (error: any) {
+      setQuestionError(true);
+      toast({
+        variant: 'destructive',
+        title: 'Failed to generate question.',
+        description: "Please click 'Next Question' to try again.",
+      });
+    } finally {
+      setIsLoading(false);
     }
-    // The isLoading state will be set to false in the useEffect that handles the new question
   };
   
   const handleAnswerSubmit = async () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    if (!candidate || !currentQuestion || isLoading) return;
+    if (!candidate || !currentQuestion || isLoading || questionError) return;
 
     const answerToSubmit = userAnswer.trim() || "Time's up! No answer provided.";
     
@@ -102,8 +105,7 @@ export function ChatInterface() {
   // Effect to start timer when a new question is ready
   useEffect(() => {
     // A new question is ready if it exists and we haven't answered it yet.
-    if (currentQuestion && !hasAnsweredCurrent && candidate?.interview.status === 'IN_PROGRESS') {
-      setIsLoading(false); // Stop loading now that question is present
+    if (currentQuestion && !hasAnsweredCurrent && !isLoading && candidate?.interview.status === 'IN_PROGRESS') {
       const duration = scheduleItem.duration;
       setTimeLeft(duration);
 
@@ -125,7 +127,7 @@ export function ChatInterface() {
         clearInterval(timerRef.current);
       }
     };
-  }, [currentQuestion, hasAnsweredCurrent, candidate?.id]);
+  }, [currentQuestion, hasAnsweredCurrent, isLoading, candidate?.id]);
   
   const finalizeInterview = async () => {
     if (!candidate || candidate.interview.status === 'COMPLETED') return;
@@ -212,7 +214,12 @@ export function ChatInterface() {
         </div>
         
         <div className="mt-4">
-            {!isLoading && currentQuestion && (
+            {questionError && !isLoading && (
+              <div className="flex justify-center">
+                 <Button onClick={sendNextQuestion}>Next Question</Button>
+              </div>
+            )}
+            {!isLoading && !questionError && currentQuestion && (
               <>
                 <div className="flex items-center gap-4 mb-2">
                     <p className="text-sm font-medium">Time remaining: {timeLeft}s</p>
@@ -276,5 +283,3 @@ function LoadingSpinner() {
         </div>
     )
 }
-
-    

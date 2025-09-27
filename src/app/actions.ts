@@ -4,7 +4,6 @@
 import {
   generateInterviewQuestion,
   type GenerateInterviewQuestionInput,
-  type GenerateInterviewQuestionOutput,
 } from '@/ai/flows/generate-interview-questions';
 import {
   promptForMissingInformation,
@@ -18,21 +17,27 @@ import {
   parseResume,
   type ParseResumeInput,
 } from '@/ai/flows/parse-resume';
+import type { InterviewQuestion } from '@/lib/types';
+
 
 export async function getInterviewQuestion(
   input: GenerateInterviewQuestionInput
-): Promise<GenerateInterviewQuestionOutput> {
+): Promise<InterviewQuestion> {
   try {
-    const result = await generateInterviewQuestion(input);
-    return result;
-  } catch (error) {
-    console.error('Error in getInterviewQuestion:', error);
-    // Return a valid TextQuestion object on error to prevent state corruption.
+    const questionText = await generateInterviewQuestion(input);
+    if (!questionText) {
+      throw new Error('AI returned an empty question.');
+    }
+    // Structure the raw text into the expected object format
     return {
       type: 'text',
       difficulty: input.difficulty,
-      question: "Sorry, I could not generate a question. Let's try another one.",
+      question: questionText,
     };
+  } catch (error) {
+    console.error('Error in getInterviewQuestion:', error);
+    // Throw error to be caught by the client component for better UX
+    throw new Error("Sorry, I could not generate a question.");
   }
 }
 
