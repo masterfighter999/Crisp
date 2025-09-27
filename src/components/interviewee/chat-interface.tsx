@@ -26,6 +26,7 @@ export function ChatInterface() {
   } = useInterviewStore();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingQuestion, setIsFetchingQuestion] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
   const [timeLeft, setTimeLeft] = useState(0);
   const [questionError, setQuestionError] = useState(false);
@@ -50,14 +51,13 @@ export function ChatInterface() {
 
 
   const sendNextQuestion = useCallback(async () => {
-    if (!candidate || !scheduleItem) return;
+    if (!candidate || !scheduleItem || isFetchingQuestion) return;
 
-    // This is the most important guard. It ensures that we only fetch a new question
-    // if the number of questions and answers are equal, meaning we are ready for the next one.
     if (candidate.interview.questions.length !== candidate.interview.answers.length) {
       return;
     }
 
+    setIsFetchingQuestion(true);
     setIsLoading(true);
     setQuestionError(false);
 
@@ -96,8 +96,9 @@ export function ChatInterface() {
       });
     } finally {
       setIsLoading(false);
+      setIsFetchingQuestion(false);
     }
-  }, [candidate, scheduleItem, questionBank, addQuestion, addAiChatMessage, toast]);
+  }, [candidate, scheduleItem, questionBank, addQuestion, addAiChatMessage, toast, isFetchingQuestion]);
   
   const handleAnswerSubmit = useCallback(async () => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -118,7 +119,7 @@ export function ChatInterface() {
     ) {
       sendNextQuestion();
     }
-  }, [candidate?.interview.answers.length, candidate?.interview.status, sendNextQuestion]);
+  }, [candidate?.interview.answers.length, sendNextQuestion, candidate?.interview.status]);
 
 
   useEffect(() => {
