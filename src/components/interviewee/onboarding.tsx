@@ -103,8 +103,8 @@ export function Onboarding() {
               if (parsedData.name) form.setValue('name', parsedData.name);
               if (parsedData.phone) form.setValue('phone', parsedData.phone);
                toast({
-                title: 'Resume Parsed',
-                description: 'Your information has been extracted from your resume.',
+                title: 'Resume Parsed Successfully',
+                description: `Name: ${parsedData.name || 'Not found'}\nPhone: ${parsedData.phone || 'Not found'}`,
               });
             }
           } catch (error) {
@@ -172,7 +172,7 @@ export function Onboarding() {
       <CardHeader>
         <CardTitle>Welcome to AI Interview Ace</CardTitle>
         <CardDescription>
-          Let's get started. Your email is pre-filled from your token.
+          Please upload your resume (PDF required) to auto-fill your information.
         </CardDescription>
       </CardHeader>
       <CardContent>
