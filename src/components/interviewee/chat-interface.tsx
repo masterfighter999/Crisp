@@ -95,7 +95,7 @@ export function ChatInterface() {
         }
       }
     }
-  }, [candidate?.id, currentQuestionIndex, candidate?.interview.questions.length]);
+  }, [candidate?.id, currentQuestionIndex, candidate?.interview.answers.length]);
 
 
   useEffect(() => {
