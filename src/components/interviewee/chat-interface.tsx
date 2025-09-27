@@ -53,8 +53,6 @@ export function ChatInterface() {
   const sendNextQuestion = useCallback(async () => {
     if (!candidate || isFetchingQuestion) return;
 
-    // Strict guard: Only fetch a new question if the number of questions and answers are equal.
-    // This means the user has answered the last question and is ready for a new one.
     if (candidate.interview.questions.length !== candidate.interview.answers.length) {
       return;
     }
@@ -304,5 +302,3 @@ function LoadingSpinner() {
         </div>
     )
 }
-
-    
