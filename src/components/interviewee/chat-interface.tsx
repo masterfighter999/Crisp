@@ -52,8 +52,8 @@ export function ChatInterface() {
 
   const sendNextQuestion = useCallback(async () => {
     if (!candidate || isFetchingQuestionRef.current) return;
-
-    // Guard: Only fetch a new question if we are expecting one.
+    
+    // Guard: only fetch if a question is expected
     if (candidate.interview.questions.length !== candidate.interview.answers.length) {
       return;
     }
@@ -223,7 +223,7 @@ export function ChatInterface() {
       </CardHeader>
       <CardContent>
         <div className="bg-muted/30 dark:bg-muted/20 p-4 rounded-lg h-96 flex flex-col">
-            <ScrollArea className="flex-grow pr-4" ref={scrollAreaRef}>
+            <ScrollArea className="flex-grow pr-4" viewportRef={scrollAreaRef}>
                  <div className="space-y-6">
                     {candidate.interview.chatHistory.map((message, index) => (
                         <ChatMessageItem key={index} message={message} />
