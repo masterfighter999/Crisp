@@ -11,8 +11,6 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { InterviewQuestion, TextQuestion } from '@/lib/types';
-
 
 const GenerateInterviewQuestionInputSchema = z.object({
   difficulty: z
@@ -52,17 +50,7 @@ const generateInterviewQuestionPrompt = ai.definePrompt({
   name: 'generateInterviewQuestionPrompt',
   input: {schema: GenerateInterviewQuestionInputSchema},
   output: {schema: GenerateInterviewQuestionOutputSchema},
-  prompt: `You are an AI assistant designed to generate interview questions for full stack developer roles.
-  Your task is to generate a single interview question based on the provided difficulty and topic.
-  The topic for the question is: {{topic}}.
-  The difficulty of the question is: {{difficulty}}.
-
-  Instructions:
-  - The question should be technically challenging and relevant to modern full stack development practices, focusing on React and Node.js.
-  - Provide a clear, open-ended technical question.
-  - Ensure the question is clear, concise, and appropriate for the specified difficulty level.
-  - Return the output as a single JSON object with 'type', 'question', and 'difficulty' fields.
-  - Do not add any conversational text, preamble, or extraneous explanations in your response.
+  prompt: `Generate one interview question about {{topic}} with {{difficulty}} difficulty. The question should be technical and relevant to a full stack developer role using React and Node.js.
   `,
 });
 
