@@ -5,6 +5,7 @@ import { ClientOnly } from '@/components/client-only';
 import withAuth from '@/components/auth/with-auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShieldCheck } from 'lucide-react';
+import { DomainManager } from '@/components/admin/domain-manager';
 
 function AdminDashboardPage() {
   return (
@@ -12,20 +13,23 @@ function AdminDashboardPage() {
       <Header />
       <main className="flex-grow container mx-auto px-4 py-8">
         <ClientOnly>
-           <Card>
-                <CardHeader className="text-center">
-                     <div className="mx-auto bg-primary/10 p-3 rounded-full mb-4">
-                        <ShieldCheck className="size-10 text-primary" />
-                    </div>
-                    <CardTitle>Admin Dashboard</CardTitle>
-                    <CardDescription>Welcome, administrator.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-center text-muted-foreground">
-                        This area is restricted. You can add admin-specific components here.
-                    </p>
-                </CardContent>
-           </Card>
+            <div className="space-y-8">
+                <Card>
+                    <CardHeader className="text-center">
+                         <div className="mx-auto bg-primary/10 p-3 rounded-full mb-4">
+                            <ShieldCheck className="size-10 text-primary" />
+                        </div>
+                        <CardTitle>Admin Dashboard</CardTitle>
+                        <CardDescription>Welcome, administrator.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-center text-muted-foreground">
+                            This area is restricted. You can add admin-specific components here.
+                        </p>
+                    </CardContent>
+               </Card>
+               <DomainManager />
+           </div>
         </ClientOnly>
       </main>
     </div>

@@ -1,10 +1,11 @@
 
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
-import { auth } from '@/lib/firebase';
+import { auth, firestore } from '@/lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 
 import { Logo } from './logo';
@@ -29,7 +30,32 @@ export function Header() {
   const pathname = usePathname();
   const [isSignupModalOpen, setSignupModalOpen] = useState(false);
   const resetActiveCandidate = useInterviewStore(s => s.resetActiveCandidate);
+  const [allowedDomains, setAllowedDomains] = useState<string[]>([]);
+  
+  useEffect(() => {
+    const fetchAllowedDomains = async () => {
+        try {
+            const domainsSnapshot = await getDocs(collection(firestore, 'allowedDomains'));
+            const domains = domainsSnapshot.docs.map(doc => doc.data().domain);
+            setAllowedDomains(domains);
+        } catch (error) {
+            console.error("Failed to fetch allowed domains:", error);
+        }
+    };
+    if (user) {
+        fetchAllowedDomains();
+    }
+  }, [user]);
 
+  const isInterviewer = useMemo(() => {
+    if (!user || !user.email) return false;
+    if (user.email === 'swayam.internship@gmail.com') return true;
+    
+    const userDomain = user.email.substring(user.email.lastIndexOf('@') + 1);
+    return allowedDomains.includes(userDomain);
+
+  }, [user, allowedDomains]);
+  
   const handleSignOut = async () => {
     await signOut(auth);
     resetActiveCandidate();
@@ -47,19 +73,10 @@ export function Header() {
     return email.substring(0, 2).toUpperCase();
   };
   
-  const getPhoneInitials = (phone: string | null | undefined) => {
-      if (!phone) return <User className="size-4" />;
-      // Get last 2 digits for initials
-      return phone.slice(-2);
-  }
-
-  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/candidate-login') || pathname.startsWith('/admin/login');
-  
-  const isInterviewer = (user?.email?.endsWith('@interviewer.com') ?? false) || user?.email === 'swayam.internship@gmail.com';
   const isAdmin = user?.email === 'swayam.internship@gmail.com';
 
   const getUserRole = () => {
-    if (isAdmin && pathname.startsWith('/admin')) return 'Admin';
+    if (isAdmin && (pathname.startsWith('/admin') || pathname.startsWith('/dashboard'))) return 'Admin';
     if (user?.isAnonymous) return 'Candidate (Guest)';
     if (user?.email) {
       if (isInterviewer) return 'Interviewer';
@@ -67,6 +84,8 @@ export function Header() {
     }
     return 'User';
   };
+
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/candidate-login') || pathname.startsWith('/admin/login');
 
   return (
     <>
@@ -102,7 +121,7 @@ export function Header() {
                            {isAdmin && <ShieldAlert className="ml-2 size-4 text-destructive" />}
                         </p>
                         <p className="text-xs leading-none text-muted-foreground">
-                          {user.email || user.phoneNumber || 'guest'}
+                          {user.email || 'guest'}
                         </p>
                       </div>
                     </DropdownMenuLabel>

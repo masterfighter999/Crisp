@@ -1,12 +1,13 @@
 // src/app/login/page.tsx
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, firestore } from '@/lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,26 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [allowedDomains, setAllowedDomains] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchAllowedDomains = async () => {
+        try {
+            const domainsSnapshot = await getDocs(collection(firestore, 'allowedDomains'));
+            const domains = domainsSnapshot.docs.map(doc => doc.data().domain);
+            setAllowedDomains(domains);
+        } catch (error) {
+            console.error("Failed to fetch allowed domains:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Configuration Error',
+                description: 'Could not load interviewer domains. Please contact an admin.',
+            });
+        }
+    };
+    fetchAllowedDomains();
+  }, [toast]);
+
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -36,10 +57,13 @@ export default function LoginPage() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
 
-    const isInterviewerEmail = values.email.toLowerCase().endsWith('@interviewer.com');
-    const isAdminEmail = values.email.toLowerCase() === 'swayam.internship@gmail.com';
+    const userEmail = values.email.toLowerCase();
+    const userDomain = userEmail.substring(userEmail.lastIndexOf('@') + 1);
 
-    if (!isInterviewerEmail && !isAdminEmail) {
+    const isAllowedDomain = allowedDomains.includes(userDomain);
+    const isAdminEmail = userEmail === 'swayam.internship@gmail.com';
+
+    if (!isAllowedDomain && !isAdminEmail) {
       toast({
         variant: 'destructive',
         title: 'Unauthorized Domain',

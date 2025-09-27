@@ -1,11 +1,14 @@
 // src/components/auth/with-auth.tsx
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useInterviewStore } from '@/lib/store';
+import { firestore } from '@/lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
+
 
 // In a real application, this should come from a secure config or remote service.
 const ADMIN_EMAIL = 'swayam.internship@gmail.com';
@@ -16,9 +19,35 @@ const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) =>
     const router = useRouter();
     const pathname = usePathname();
     const activeToken = useInterviewStore(s => s.activeToken);
+    const [allowedDomains, setAllowedDomains] = useState<string[]>([]);
+    const [domainsLoading, setDomainsLoading] = useState(true);
 
     useEffect(() => {
-      if (loading) return;
+        const fetchAllowedDomains = async () => {
+            try {
+                const domainsSnapshot = await getDocs(collection(firestore, 'allowedDomains'));
+                const domains = domainsSnapshot.docs.map(doc => doc.data().domain);
+                setAllowedDomains(domains);
+            } catch (error) {
+                console.error("Failed to fetch allowed domains:", error);
+            } finally {
+                setDomainsLoading(false);
+            }
+        };
+        fetchAllowedDomains();
+    }, []);
+
+    const isInterviewer = useMemo(() => {
+        if (!user || !user.email) return false;
+        if (user.email === ADMIN_EMAIL) return true;
+        
+        const userDomain = user.email.substring(user.email.lastIndexOf('@') + 1);
+        return allowedDomains.includes(userDomain);
+
+    }, [user, allowedDomains]);
+
+    useEffect(() => {
+      if (loading || domainsLoading) return;
       
       const isInterviewerRoute = pathname.startsWith('/dashboard');
       const isCandidateInterviewRoute = pathname.startsWith('/interview');
@@ -36,7 +65,6 @@ const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) =>
 
       // At this point, user is authenticated
       const isAnonymous = user.isAnonymous;
-      const isInterviewer = (user.email?.endsWith('@interviewer.com') ?? false) || user.email === 'swayam.internship@gmail.com';
       const isAdmin = user.email === ADMIN_EMAIL;
 
       // Rule 1: Protect interviewer dashboard
@@ -68,9 +96,9 @@ const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) =>
       }
 
 
-    }, [user, loading, router, pathname, activeToken]);
+    }, [user, loading, router, pathname, activeToken, domainsLoading, isInterviewer]);
 
-    if (loading || !user) {
+    if (loading || domainsLoading || !user) {
        return (
        <div className="flex flex-col min-h-screen bg-background">
         <header className="border-b">
