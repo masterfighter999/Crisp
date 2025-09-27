@@ -50,10 +50,11 @@ export function ChatInterface() {
 
 
   const sendNextQuestion = useCallback(async () => {
-    if (!candidate || !scheduleItem || isLoading) return;
+    if (!candidate || !scheduleItem) return;
 
-    // Guard to prevent sending a question if one is already in flight or the logic is ahead.
-    if (candidate.interview.questions.length > candidate.interview.answers.length) {
+    // This is the most important guard. It ensures that we only fetch a new question
+    // if the number of questions and answers are equal, meaning we are ready for the next one.
+    if (candidate.interview.questions.length !== candidate.interview.answers.length) {
       return;
     }
 
@@ -96,7 +97,7 @@ export function ChatInterface() {
     } finally {
       setIsLoading(false);
     }
-  }, [candidate, scheduleItem, questionBank, addQuestion, addAiChatMessage, toast, isLoading]);
+  }, [candidate, scheduleItem, questionBank, addQuestion, addAiChatMessage, toast]);
   
   const handleAnswerSubmit = useCallback(async () => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -111,16 +112,13 @@ export function ChatInterface() {
 
 
   useEffect(() => {
-    // This is now the SINGLE source of truth for sending a question.
-    // It runs if the interview is in progress, not complete, and we need to send the next question.
     if (
       candidate?.interview.status === 'IN_PROGRESS' &&
-      candidate.interview.answers.length < INTERVIEW_SCHEDULE.length &&
-      candidate.interview.questions.length === candidate.interview.answers.length
+      candidate.interview.answers.length < INTERVIEW_SCHEDULE.length
     ) {
       sendNextQuestion();
     }
-  }, [candidate?.interview.answers.length, candidate?.interview.questions.length, candidate?.interview.status, sendNextQuestion]);
+  }, [candidate?.interview.answers.length, candidate?.interview.status, sendNextQuestion]);
 
 
   useEffect(() => {
@@ -177,10 +175,10 @@ export function ChatInterface() {
   }, [candidate, addAiChatMessage, completeInterview, toast]);
   
   useEffect(() => {
-    if (candidate?.interview.status === 'IN_PROGRESS' && candidate.interview.answers.length === INTERVIEW_SCHEDULE.length && candidate.interview.questions.length === INTERVIEW_SCHEDULE.length) {
+    if (candidate?.interview.status === 'IN_PROGRESS' && candidate.interview.answers.length === INTERVIEW_SCHEDULE.length) {
       finalizeInterview();
     }
-  }, [candidate?.interview.answers.length, candidate?.interview.status, finalizeInterview, candidate?.interview.questions.length]);
+  }, [candidate?.interview.answers.length, candidate?.interview.status, finalizeInterview]);
 
 
   const progressPercentage = scheduleItem ? (timeLeft / scheduleItem.duration) * 100 : 0;
@@ -299,9 +297,3 @@ function LoadingSpinner() {
         </div>
     )
 }
-
-    
-
-    
-
-    
