@@ -107,11 +107,9 @@ export function CandidateAuth() {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      // Redirect to a future candidate dashboard
-      router.push('/candidate-dashboard');
       toast({
-        title: 'Coming Soon!',
-        description: 'The candidate dashboard is under construction.',
+        title: 'Sign In Successful!',
+        description: 'The candidate dashboard is coming soon. Please check back later.',
       });
     } catch (error: any) {
       toast({
