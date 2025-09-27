@@ -21,9 +21,9 @@ const ParseResumeInputSchema = z.object({
 export type ParseResumeInput = z.infer<typeof ParseResumeInputSchema>;
 
 const ParseResumeOutputSchema = z.object({
-  name: z.string().optional().describe("The full name of the candidate."),
-  email: z.string().email().optional().describe("The email address of the candidate."),
-  phone: z.string().optional().describe("The phone number of the candidate."),
+  name: z.string().nullable().describe("The full name of the candidate."),
+  email: z.string().email().nullable().describe("The email address of the candidate."),
+  phone: z.string().nullable().describe("The phone number of the candidate."),
 });
 export type ParseResumeOutput = z.infer<typeof ParseResumeOutputSchema>;
 
@@ -48,9 +48,9 @@ const parseResumePrompt = ai.definePrompt({
 
     Output format:
     - Return a JSON object with the fields: \`name\`, \`email\`, and \`phone\`.
-    - If a specific piece of information (like a phone number or email) cannot be found in the resume, you MUST return the corresponding field as a null or empty string. Do not invent information.
-    - For example, if you only find the name and email, the output should be: \`{"name": "John Doe", "email": "john.doe@example.com", "phone": ""}\`.
-    - If you cannot find any of the required fields, return all fields as empty strings.`
+    - If a specific piece of information (like a phone number or email) cannot be found in the resume, you MUST return the corresponding field as 'null'. Do not invent information or use empty strings.
+    - For example, if you only find the name and email, the output should be: \`{"name": "John Doe", "email": "john.doe@example.com", "phone": null}\`.
+    - If you cannot find any of the required fields, return all fields as null.`
 });
 
 

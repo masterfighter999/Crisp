@@ -116,25 +116,26 @@ export function Onboarding() {
           const parsedData = await parseResumeAction({ resumeDataUri });
           
            if (parsedData) {
-            const tokenEmail = form.getValues('email');
+            const {name, email, phone} = parsedData;
             
-            if (parsedData.email && parsedData.email.toLowerCase() !== tokenEmail.toLowerCase()) {
+            const currentEmail = form.getValues('email');
+            
+            if (email && email.toLowerCase() !== currentEmail.toLowerCase()) {
                 toast({
                     title: 'Email Mismatch Warning',
-                    description: `The email on your resume (${parsedData.email}) doesn't match the one for this interview (${tokenEmail}).`,
+                    description: `The email on your resume (${email}) doesn't match the one for this interview (${currentEmail}).`,
                     duration: 5000,
                 });
             }
 
-            const newName = parsedData.name || form.getValues('name');
-            const newPhone = parsedData.phone || form.getValues('phone');
+            if (name) form.setValue('name', name, { shouldValidate: true });
+            if (phone) form.setValue('phone', phone, { shouldValidate: true });
             
-            if (newName) form.setValue('name', newName, { shouldValidate: true });
-            if (newPhone) form.setValue('phone', newPhone, { shouldValidate: true });
-            
+            const foundFields = [name && 'Name', phone && 'Phone'].filter(Boolean).join(', ');
+
             toast({
               title: 'Resume Parsed',
-              description: `Name: ${newName || 'Not found'}, Phone: ${newPhone || 'Not found'}`,
+              description: foundFields ? `Found: ${foundFields}.` : 'Could not extract details, please enter them manually.',
             });
           }
         } catch (error) {

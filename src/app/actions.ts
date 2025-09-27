@@ -16,6 +16,7 @@ import {
 import {
   parseResume,
   type ParseResumeInput,
+  type ParseResumeOutput,
 } from '@/ai/flows/parse-resume';
 
 export async function getMissingInfoPrompt(
@@ -42,13 +43,13 @@ export async function getInterviewSummary(
   }
 }
 
-export async function parseResumeAction(input: ParseResumeInput) {
+export async function parseResumeAction(input: ParseResumeInput): Promise<ParseResumeOutput | null> {
   try {
     const result = await parseResume(input);
     return result;
   } catch (error) {
     console.error('Error in parseResumeAction:', error);
-    return { name: '', email: '', phone: ''};
+    return { name: null, email: null, phone: null};
   }
 }
 
