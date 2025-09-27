@@ -7,6 +7,9 @@ import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useInterviewStore } from '@/lib/store';
 
+// In a real application, this should come from a secure config or remote service.
+const ADMIN_PHONE_NUMBERS = ['+11234567890']; // Add authorized admin phone numbers here
+
 const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) => {
   const Wrapper = (props: P) => {
     const { user, loading } = useAuth();
@@ -20,28 +23,31 @@ const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) =>
       const isInterviewerRoute = pathname.startsWith('/dashboard');
       const isCandidateInterviewRoute = pathname.startsWith('/interview');
       const isCandidateDashboardRoute = pathname.startsWith('/candidate-dashboard');
+      const isAdminRoute = pathname.startsWith('/admin/dashboard');
       
       if (!user) {
         // If no user, redirect to appropriate login
         if(isInterviewerRoute) router.push('/login');
         else if(isCandidateDashboardRoute) router.push('/candidate-login');
-        else if(isCandidateInterviewRoute) router.push('/'); // Assumes homepage is guest/token entry
+        else if(isCandidateInterviewRoute) router.push('/');
+        else if(isAdminRoute) router.push('/admin/login');
         return;
       }
 
       // At this point, user is authenticated
       const isAnonymous = user.isAnonymous;
       const isInterviewer = user.email?.endsWith('@interviewer.com') ?? false;
+      const isAdmin = user.phoneNumber != null && ADMIN_PHONE_NUMBERS.includes(user.phoneNumber);
 
       // Rule 1: Protect interviewer dashboard
       if (isInterviewerRoute && !isInterviewer) {
-        router.push('/'); // Or '/candidate-dashboard' if they are a logged-in candidate
+        router.push('/'); 
         return;
       }
 
       // Rule 2: Anonymous users can only access the interview page (with a token)
       if (isAnonymous) {
-        if (isInterviewerRoute || isCandidateDashboardRoute) {
+        if (isInterviewerRoute || isCandidateDashboardRoute || isAdminRoute) {
           router.push('/');
         } else if (isCandidateInterviewRoute && !activeToken) {
           router.push('/');
@@ -54,6 +60,13 @@ const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) =>
         router.push('/candidate-dashboard');
         return;
       }
+      
+      // Rule 4: Protect admin dashboard
+      if (isAdminRoute && !isAdmin) {
+        router.push('/admin/login');
+        return;
+      }
+
 
     }, [user, loading, router, pathname, activeToken]);
 

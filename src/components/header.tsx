@@ -10,7 +10,7 @@ import { signOut } from 'firebase/auth';
 import { Logo } from './logo';
 import { Button } from './ui/button';
 import { SignupModal } from './auth/signup-modal';
-import { LogOut, LayoutDashboard, User as UserIcon } from 'lucide-react';
+import { LogOut, LayoutDashboard, User as UserIcon, ShieldAlert } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +35,8 @@ export function Header() {
     resetActiveCandidate();
     if (pathname.startsWith('/dashboard') || pathname.startsWith('/login')) {
        router.push('/login');
+    } else if (pathname.startsWith('/admin')) {
+       router.push('/admin/login');
     } else {
        router.push('/');
     }
@@ -44,20 +46,24 @@ export function Header() {
     if (!email) return <User className="size-4" />;
     return email.substring(0, 2).toUpperCase();
   };
+  
+  const getPhoneInitials = (phone: string | null | undefined) => {
+      if (!phone) return <User className="size-4" />;
+      // Get last 2 digits for initials
+      return phone.slice(-2);
+  }
 
-  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/candidate-login');
-  const isInterviewerDashboard = pathname.startsWith('/dashboard');
-
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/candidate-login') || pathname.startsWith('/admin/login');
+  
   const isInterviewer = user?.email?.endsWith('@interviewer.com');
+  // In a real app, this check would be more robust.
+  const isAdmin = user?.phoneNumber != null; 
 
   const getUserRole = () => {
-    if (user?.isAnonymous) {
-      return 'Candidate (Guest)';
-    }
+    if (isAdmin && pathname.startsWith('/admin')) return 'Admin';
+    if (user?.isAnonymous) return 'Candidate (Guest)';
     if (user?.email) {
-      if (isInterviewer) {
-        return 'Interviewer';
-      }
+      if (isInterviewer) return 'Interviewer';
       return 'Candidate';
     }
     return 'User';
@@ -82,7 +88,9 @@ export function Header() {
                   <DropdownMenuTrigger asChild>
                      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                        <Avatar className="h-8 w-8">
-                         <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
+                         <AvatarFallback>
+                            {isAdmin ? getPhoneInitials(user.phoneNumber) : getInitials(user.email)}
+                        </AvatarFallback>
                        </Avatar>
                      </Button>
                   </DropdownMenuTrigger>
@@ -92,20 +100,27 @@ export function Header() {
                         <p className="text-sm font-medium leading-none flex items-center">
                            {getUserRole()}
                            {isInterviewer && <ShieldCheck className="ml-2 size-4 text-primary" />}
+                           {isAdmin && <ShieldAlert className="ml-2 size-4 text-destructive" />}
                         </p>
                         <p className="text-xs leading-none text-muted-foreground">
-                          {user.email || 'guest'}
+                          {user.email || user.phoneNumber || 'guest'}
                         </p>
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
+                    {isAdmin && (
+                      <DropdownMenuItem onClick={() => router.push('/admin/dashboard')}>
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                        <span>Admin Dashboard</span>
+                      </DropdownMenuItem>
+                    )}
                     {isInterviewer && (
                       <DropdownMenuItem onClick={() => router.push('/dashboard')}>
                         <LayoutDashboard className="mr-2 h-4 w-4" />
                         <span>Interviewer Dashboard</span>
                       </DropdownMenuItem>
                     )}
-                     {!user.isAnonymous && (
+                     {!user.isAnonymous && !isAdmin && (
                       <DropdownMenuItem onClick={() => router.push('/candidate-dashboard')}>
                         <UserIcon className="mr-2 h-4 w-4" />
                         <span>My Dashboard</span>
@@ -122,6 +137,9 @@ export function Header() {
                     <>
                       <Button variant="ghost" onClick={() => router.push('/login')}>
                         Interviewer Login
+                      </Button>
+                       <Button variant="ghost" onClick={() => router.push('/admin/login')}>
+                        Admin Login
                       </Button>
                       <Button onClick={() => setSignupModalOpen(true)}>Request Access</Button>
                     </>
