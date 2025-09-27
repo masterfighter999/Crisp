@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { UploadCloud, File, X, PartyPopper } from 'lucide-react';
+import { UploadCloud, File, X, PartyPopper, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { parseResumeAction } from '@/app/actions';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -20,6 +21,7 @@ const formSchema = z.object({
 export function Onboarding() {
   const { createCandidate, getActiveCandidate, updateCandidateInfo, startInterview } = useInterviewStore();
   const [resumeFile, setResumeFile] = useState<{ name: string; size: number } | null>(null);
+  const [isParsing, setIsParsing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -28,18 +30,45 @@ export function Onboarding() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: '',
-      email: '',
-      phone: '',
+      name: activeCandidate?.name || '',
+      email: activeCandidate?.email || '',
+      phone: activeCandidate?.phone || '',
     },
   });
 
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       if (file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        const candidateId = activeCandidate?.id || createCandidate();
+        createCandidate();
         setResumeFile({ name: file.name, size: file.size });
+
+        setIsParsing(true);
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+          const resumeDataUri = reader.result as string;
+          try {
+            const parsedData = await parseResumeAction({ resumeDataUri });
+            if (parsedData) {
+              if (parsedData.name) form.setValue('name', parsedData.name);
+              if (parsedData.email) form.setValue('email', parsedData.email);
+              if (parsedData.phone) form.setValue('phone', parsedData.phone);
+               toast({
+                title: 'Resume Parsed',
+                description: 'Your information has been extracted from your resume.',
+              });
+            }
+          } catch (error) {
+             toast({
+              variant: 'destructive',
+              title: 'Parsing Failed',
+              description: 'We could not parse your resume. Please fill in the details manually.',
+            });
+          } finally {
+            setIsParsing(false);
+          }
+        };
       } else {
         toast({
           variant: 'destructive',
@@ -51,9 +80,8 @@ export function Onboarding() {
   };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    if (activeCandidate) {
-      updateCandidateInfo(activeCandidate.id, { ...values, resumeFile });
-    }
+    const candidateId = activeCandidate?.id || createCandidate();
+    updateCandidateInfo(candidateId, { ...values, resumeFile });
   };
   
   const handleStartInterview = () => {
@@ -93,44 +121,55 @@ export function Onboarding() {
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          <Form {...form}>
-            <div>
-              <FormLabel>Resume (PDF or DOCX)</FormLabel>
-              <div
-                className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10 cursor-pointer hover:border-primary transition-colors"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <div className="text-center">
-                  <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
-                    <p className="pl-1">Click to upload or drag and drop</p>
-                  </div>
-                  <p className="text-xs leading-5 text-muted-foreground">PDF, DOCX up to 10MB</p>
-                </div>
-              </div>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                className="hidden"
-                accept=".pdf,.docx"
-              />
-              {resumeFile && (
-                <div className="mt-4 flex items-center justify-between bg-muted/50 p-3 rounded-md">
-                  <div className="flex items-center gap-3">
-                    <File className="size-6 text-primary" />
-                    <div>
-                      <p className="text-sm font-medium">{resumeFile.name}</p>
-                      <p className="text-xs text-muted-foreground">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
+          <div>
+            <FormLabel>Resume (PDF or DOCX)</FormLabel>
+            <div
+              className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10 cursor-pointer hover:border-primary transition-colors data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50"
+              onClick={() => !isParsing && fileInputRef.current?.click()}
+              data-disabled={isParsing}
+            >
+              <div className="text-center">
+                {isParsing ? (
+                  <>
+                    <Loader2 className="mx-auto h-12 w-12 animate-spin text-muted-foreground" />
+                    <p className="mt-4 text-sm leading-6 text-muted-foreground">Parsing resume...</p>
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
+                      <p className="pl-1">Click to upload or drag and drop</p>
                     </div>
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={() => setResumeFile(null)}>
-                    <X className="size-4" />
-                  </Button>
-                </div>
-              )}
+                    <p className="text-xs leading-5 text-muted-foreground">PDF, DOCX up to 10MB</p>
+                  </>
+                )}
+              </div>
             </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept=".pdf,.docx"
+              disabled={isParsing}
+            />
+            {resumeFile && !isParsing && (
+              <div className="mt-4 flex items-center justify-between bg-muted/50 p-3 rounded-md">
+                <div className="flex items-center gap-3">
+                  <File className="size-6 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium">{resumeFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setResumeFile(null)}>
+                  <X className="size-4" />
+                </Button>
+              </div>
+            )}
+          </div>
 
+          <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
@@ -139,7 +178,7 @@ export function Onboarding() {
                   <FormItem>
                     <FormLabel>Full Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Doe" {...field} />
+                      <Input placeholder="John Doe" {...field} disabled={isParsing} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -152,7 +191,7 @@ export function Onboarding() {
                   <FormItem>
                     <FormLabel>Email Address</FormLabel>
                     <FormControl>
-                      <Input placeholder="john.doe@example.com" {...field} />
+                      <Input placeholder="john.doe@example.com" {...field} disabled={isParsing} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -165,13 +204,14 @@ export function Onboarding() {
                   <FormItem>
                     <FormLabel>Phone Number</FormLabel>
                     <FormControl>
-                      <Input placeholder="(123) 456-7890" {...field} />
+                      <Input placeholder="(123) 456-7890" {...field} disabled={isParsing} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full" disabled={isParsing}>
+                {isParsing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Save and Continue
               </Button>
             </form>
