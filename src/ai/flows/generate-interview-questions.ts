@@ -59,8 +59,7 @@ const generateInterviewQuestionPrompt = ai.definePrompt({
 
   Instructions:
   - The question should be technically challenging and relevant to modern full stack development practices, focusing on React and Node.js.
-  - If the difficulty is 'Easy', generate a question that can be answered with a single word.
-  - If the difficulty is 'Medium' or 'Hard', provide a clear, open-ended technical question.
+  - Provide a clear, open-ended technical question.
   - Ensure the question is clear, concise, and appropriate for the specified difficulty level.
   - Return the output as a single JSON object with 'type', 'question', and 'difficulty' fields.
   - Do not add any conversational text, preamble, or extraneous explanations in your response.

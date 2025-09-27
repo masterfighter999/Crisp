@@ -7,10 +7,10 @@ import { doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, ge
 import { firestore } from './firebase';
 
 export const INTERVIEW_SCHEDULE: { difficulty: 'Easy' | 'Medium' | 'Hard'; type: 'text'; duration: number }[] = [
-  { difficulty: 'Easy', type: 'text', duration: 20 },
-  { difficulty: 'Easy', type: 'text', duration: 20 },
+  { difficulty: 'Easy', type: 'text', duration: 30 },
+  { difficulty: 'Easy', type: 'text', duration: 30 },
   { difficulty: 'Medium', type: 'text', duration: 60 },
-  { difficulty: 'Medium', type: 'text', duration: 60 },
+  { difficulty: 'Medium', type: 'text', duration: 90 },
   { difficulty: 'Hard', type: 'text', duration: 120 },
   { difficulty: 'Hard', type: 'text', duration: 120 },
 ];
