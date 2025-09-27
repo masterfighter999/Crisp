@@ -88,6 +88,12 @@ export function Onboarding() {
         setIsParsing(true);
         const reader = new FileReader();
         reader.readAsDataURL(file);
+        
+        // Reset the file input to allow re-uploading the same file
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+
         reader.onload = async () => {
           const resumeDataUri = reader.result as string;
           try {
@@ -123,10 +129,6 @@ export function Onboarding() {
             });
           } finally {
             setIsParsing(false);
-            // Reset the file input to allow re-uploading the same file
-            if(fileInputRef.current) {
-                fileInputRef.current.value = '';
-            }
           }
         };
       } else {
@@ -222,7 +224,7 @@ export function Onboarding() {
                 accept=".pdf"
                 disabled={isParsing}
               />
-              {resumeFile && !isParsing && (
+               {resumeFile && !isParsing && (
                 <div className="mt-4 flex items-center justify-between bg-muted/50 p-3 rounded-md">
                   <div className="flex items-center gap-3">
                     <File className="size-6 text-primary" />
