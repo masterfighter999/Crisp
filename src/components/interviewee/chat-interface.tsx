@@ -67,7 +67,7 @@ export function ChatInterface() {
         console.warn(`No questions found in local question bank for difficulty: ${scheduleItem.difficulty}. Falling back to AI generation.`);
         const questionText = await generateQuestionAction({ difficulty: scheduleItem.difficulty, topic: 'full stack' });
         newQuestion = {
-            question: questionText,
+            questionText: questionText,
             difficulty: scheduleItem.difficulty,
             type: 'text'
         };
@@ -78,7 +78,7 @@ export function ChatInterface() {
       }
 
       await addQuestion(candidate.id, newQuestion);
-      await addAiChatMessage(candidate.id, newQuestion.question);
+      await addAiChatMessage(candidate.id, newQuestion.questionText);
       setUserAnswer('');
 
     } catch (error: any) {

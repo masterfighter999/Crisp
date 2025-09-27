@@ -11,7 +11,7 @@ export type QuestionDifficulty = 'Easy' | 'Medium' | 'Hard';
 
 export type TextQuestion = {
   type: 'text';
-  question: string;
+  questionText: string;
   difficulty: QuestionDifficulty;
 }
 
