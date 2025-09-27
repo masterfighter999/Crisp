@@ -18,24 +18,25 @@ const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) =>
       if (loading) return;
       
       const isInterviewerRoute = pathname.startsWith('/dashboard');
-      const isCandidateRoute = pathname.startsWith('/interview');
+      const isCandidateInterviewRoute = pathname.startsWith('/interview');
+      const isCandidateDashboardRoute = pathname.startsWith('/candidate-dashboard');
       
       if (!user) {
         // If no user, redirect to appropriate login
         if(isInterviewerRoute) router.push('/login');
-        else router.push('/'); // Assumes homepage is candidate token entry
+        else router.push('/'); // Assumes homepage is candidate entry
       } else {
         const isAnonymous = user.isAnonymous;
-        // If user is anonymous, they should not access interviewer dashboard
-        if(isAnonymous && isInterviewerRoute) {
+        // If user is anonymous, they should not access interviewer or candidate dashboards
+        if(isAnonymous && (isInterviewerRoute || isCandidateDashboardRoute)) {
             router.push('/');
         }
         // If user is not anonymous, they should not access anonymous interview flow
-        if(!isAnonymous && isCandidateRoute) {
-            router.push('/dashboard');
+        if(!isAnonymous && isCandidateInterviewRoute) {
+            router.push('/candidate-dashboard');
         }
         // If user is anonymous but has no token for the interview page
-        if(isAnonymous && isCandidateRoute && !activeToken) {
+        if(isAnonymous && isCandidateInterviewRoute && !activeToken) {
           router.push('/');
         }
       }

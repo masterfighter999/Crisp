@@ -9,7 +9,7 @@ import { signOut } from 'firebase/auth';
 import { Logo } from './logo';
 import { Button } from './ui/button';
 import { SignupModal } from './auth/signup-modal';
-import { LogOut, LayoutDashboard } from 'lucide-react';
+import { LogOut, LayoutDashboard, User as UserIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,7 +32,11 @@ export function Header() {
   const handleSignOut = async () => {
     await signOut(auth);
     resetActiveCandidate();
-    router.push(pathname.startsWith('/dashboard') || pathname.startsWith('/login') ? '/login' : '/');
+    if (pathname.startsWith('/dashboard') || pathname.startsWith('/login')) {
+       router.push('/login');
+    } else {
+       router.push('/');
+    }
   };
   
   const getInitials = (email: string | null | undefined) => {
@@ -68,8 +72,8 @@ export function Header() {
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
                         <p className="text-sm font-medium leading-none flex items-center">
-                           {user.isAnonymous ? 'Candidate' : 'Interviewer'}
-                           {!user.isAnonymous && <ShieldCheck className="ml-2 size-4 text-primary" />}
+                           {user.isAnonymous ? 'Candidate' : (user.email ? 'Interviewer' : 'Candidate')}
+                           {!user.isAnonymous && user.email && <ShieldCheck className="ml-2 size-4 text-primary" />}
                         </p>
                         <p className="text-xs leading-none text-muted-foreground">
                           {user.email || 'guest'}
@@ -77,10 +81,16 @@ export function Header() {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {!user.isAnonymous && (
+                    {!user.isAnonymous && user.email && (
                       <DropdownMenuItem onClick={() => router.push('/dashboard')}>
                         <LayoutDashboard className="mr-2 h-4 w-4" />
-                        <span>Dashboard</span>
+                        <span>Interviewer Dashboard</span>
+                      </DropdownMenuItem>
+                    )}
+                     {!user.isAnonymous && !user.email && (
+                      <DropdownMenuItem onClick={() => router.push('/candidate-dashboard')}>
+                        <UserIcon className="mr-2 h-4 w-4" />
+                        <span>My Dashboard</span>
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuItem onClick={handleSignOut}>

@@ -107,10 +107,7 @@ export function CandidateAuth() {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      toast({
-        title: 'Sign In Successful!',
-        description: 'The candidate dashboard is coming soon. Please check back later.',
-      });
+      router.push('/candidate-dashboard');
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -163,10 +160,10 @@ export function CandidateAuth() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
-        <KeyRound className="mx-auto h-12 w-12 text-primary" />
+        <User className="mx-auto h-12 w-12 text-primary" />
         <CardTitle className="mt-4">Candidate Access</CardTitle>
         <CardDescription>
-          Sign in as a guest to start your interview.
+          Sign in as a guest to start an interview, or sign in with Google to view past results.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -179,7 +176,7 @@ export function CandidateAuth() {
           {isLoading ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <User className="mr-2 h-4 w-4" />
+            <KeyRound className="mr-2 h-4 w-4" />
           )}
           Start as Guest
         </Button>
@@ -218,7 +215,7 @@ export function CandidateAuth() {
       </CardContent>
        <CardFooter>
          <p className="px-8 text-center text-xs text-muted-foreground">
-          Sign in with Google to view past interview results (feature coming soon).
+          Sign in with Google to view past interview results.
         </p>
        </CardFooter>
     </Card>
