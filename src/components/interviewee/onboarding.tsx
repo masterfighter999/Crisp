@@ -90,9 +90,8 @@ export function Onboarding() {
         reader.readAsDataURL(file);
 
         reader.onload = async () => {
-           // Reset the file input to allow re-uploading the same file
           if (fileInputRef.current) {
-              fileInputRef.current.value = '';
+            fileInputRef.current.value = '';
           }
           const resumeDataUri = reader.result as string;
           try {
