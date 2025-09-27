@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useInterviewStore } from '@/lib/store';
 
 // In a real application, this should come from a secure config or remote service.
-const ADMIN_PHONE_NUMBERS = ['+11234567890']; // Add authorized admin phone numbers here
+const ADMIN_EMAIL = 'swayam.internship@gmail.com';
 
 const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) => {
   const Wrapper = (props: P) => {
@@ -37,7 +37,7 @@ const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) =>
       // At this point, user is authenticated
       const isAnonymous = user.isAnonymous;
       const isInterviewer = (user.email?.endsWith('@interviewer.com') ?? false) || user.email === 'swayam.internship@gmail.com';
-      const isAdmin = user.phoneNumber != null && ADMIN_PHONE_NUMBERS.includes(user.phoneNumber);
+      const isAdmin = user.email === ADMIN_EMAIL;
 
       // Rule 1: Protect interviewer dashboard
       if (isInterviewerRoute && !isInterviewer) {

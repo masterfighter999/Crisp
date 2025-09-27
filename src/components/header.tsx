@@ -55,9 +55,8 @@ export function Header() {
 
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/candidate-login') || pathname.startsWith('/admin/login');
   
-  const isInterviewer = user?.email?.endsWith('@interviewer.com');
-  // In a real app, this check would be more robust.
-  const isAdmin = user?.phoneNumber != null; 
+  const isInterviewer = (user?.email?.endsWith('@interviewer.com') ?? false) || user?.email === 'swayam.internship@gmail.com';
+  const isAdmin = user?.email === 'swayam.internship@gmail.com';
 
   const getUserRole = () => {
     if (isAdmin && pathname.startsWith('/admin')) return 'Admin';
@@ -89,7 +88,7 @@ export function Header() {
                      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                        <Avatar className="h-8 w-8">
                          <AvatarFallback>
-                            {isAdmin ? getPhoneInitials(user.phoneNumber) : getInitials(user.email)}
+                            {getInitials(user.email)}
                         </AvatarFallback>
                        </Avatar>
                      </Button>
@@ -99,7 +98,7 @@ export function Header() {
                       <div className="flex flex-col space-y-1">
                         <p className="text-sm font-medium leading-none flex items-center">
                            {getUserRole()}
-                           {isInterviewer && <ShieldCheck className="ml-2 size-4 text-primary" />}
+                           {isInterviewer && !isAdmin && <ShieldCheck className="ml-2 size-4 text-primary" />}
                            {isAdmin && <ShieldAlert className="ml-2 size-4 text-destructive" />}
                         </p>
                         <p className="text-xs leading-none text-muted-foreground">
@@ -120,7 +119,7 @@ export function Header() {
                         <span>Interviewer Dashboard</span>
                       </DropdownMenuItem>
                     )}
-                     {!user.isAnonymous && !isAdmin && (
+                     {!user.isAnonymous && !isInterviewer && (
                       <DropdownMenuItem onClick={() => router.push('/candidate-dashboard')}>
                         <UserIcon className="mr-2 h-4 w-4" />
                         <span>My Dashboard</span>

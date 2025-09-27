@@ -1,82 +1,63 @@
 // src/app/admin/login/page.tsx
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Header } from '@/components/header';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { Loader2, ShieldAlert } from 'lucide-react';
+
+const formSchema = z.object({
+  email: z.string().email({ message: 'Please enter a valid email address.' }),
+  password: z.string().min(1, { message: 'Password is required.' }),
+});
+
+const ADMIN_EMAIL = "swayam.internship@gmail.com";
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
-  useEffect(() => {
-    // This is necessary to initialize the reCAPTCHA verifier widget
-    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      'size': 'invisible',
-      'callback': () => {
-        // reCAPTCHA solved, allow signInWithPhoneNumber.
-      }
-    });
-  }, []);
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
 
-  const handleSendCode = async () => {
-    if (!phoneNumber) {
-        toast({ variant: 'destructive', title: 'Phone number is required.' });
-        return;
-    }
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
-    try {
-      const verifier = window.recaptchaVerifier;
-      const result = await signInWithPhoneNumber(auth, phoneNumber, verifier);
-      setConfirmationResult(result);
-      toast({ title: 'Verification Code Sent', description: `A code has been sent to ${phoneNumber}.` });
-    } catch (error: any) {
+
+    if (values.email.toLowerCase() !== ADMIN_EMAIL) {
       toast({
         variant: 'destructive',
-        title: 'Failed to Send Code',
-        description: error.message || 'Please check the phone number and try again.',
+        title: 'Unauthorized',
+        description: 'This email address is not authorized for admin access.',
       });
-       // Reset reCAPTCHA
-      if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.render().then((widgetId: any) => {
-          grecaptcha.reset(widgetId);
-        });
-      }
-    } finally {
       setIsLoading(false);
+      return;
     }
-  };
 
-  const handleVerifyCode = async () => {
-     if (!verificationCode) {
-        toast({ variant: 'destructive', title: 'Verification code is required.' });
-        return;
-    }
-    if (!confirmationResult) {
-         toast({ variant: 'destructive', title: 'Please request a verification code first.' });
-        return;
-    }
-    setIsLoading(true);
     try {
-      await confirmationResult.confirm(verificationCode);
+      await signInWithEmailAndPassword(auth, values.email, values.password);
       router.push('/admin/dashboard');
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Verification Failed',
-        description: error.code === 'auth/invalid-verification-code' 
-          ? 'The verification code is invalid. Please try again.'
-          : error.message || 'An unknown error occurred.',
+        title: 'Authentication Failed',
+        description: error.code === 'auth/wrong-password'
+          ? 'Incorrect password. Please try again.'
+          : 'An unexpected error occurred. Please check your credentials.',
       });
     } finally {
       setIsLoading(false);
@@ -89,56 +70,50 @@ export default function AdminLoginPage() {
       <main className="flex-grow flex items-center justify-center p-4">
         <Card className="w-full max-w-sm">
           <CardHeader className="text-center">
-            <ShieldCheck className="mx-auto h-12 w-12 text-primary" />
+            <ShieldAlert className="mx-auto h-12 w-12 text-destructive" />
             <CardTitle className="mt-4">Admin Login</CardTitle>
             <CardDescription>
-                {confirmationResult ? 'Enter the code sent to your phone.' : 'Enter your phone number to sign in.'}
+                Enter your admin credentials to access the dashboard.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {!confirmationResult ? (
-              <div className="space-y-4">
-                <Input
-                  type="tel"
-                  placeholder="e.g., +16505551234"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  disabled={isLoading}
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email Address</FormLabel>
+                      <FormControl>
+                        <Input placeholder="admin@example.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                <Button onClick={handleSendCode} className="w-full" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Send Verification Code
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <Input
-                  type="text"
-                  placeholder="6-digit code"
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value)}
-                  disabled={isLoading}
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••••" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                <Button onClick={handleVerifyCode} className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full" disabled={isLoading}>
                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Verify and Sign In
+                  Sign In
                 </Button>
-                 <Button variant="link" onClick={() => setConfirmationResult(null)} className="w-full">
-                    Use a different phone number
-                </Button>
-              </div>
-            )}
+              </form>
+            </Form>
           </CardContent>
         </Card>
       </main>
-      <div id="recaptcha-container"></div>
     </div>
   );
-}
-
-// Add this to your global types or a specific types file if you have one
-declare global {
-  interface Window {
-    recaptchaVerifier: RecaptchaVerifier;
-  }
 }
