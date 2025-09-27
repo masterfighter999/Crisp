@@ -151,27 +151,34 @@ export function AddCandidate() {
       setIsLoading(true);
       const reader = new FileReader();
       reader.onload = async (e) => {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json<{ email: string }>(worksheet);
-        
-        const newEntries: TokenEntry[] = [];
-        for (const row of json) {
-          const email = row.email?.trim();
-          if (email) {
-            const newEntry = await addEmailAndGenerateToken(email);
-            if (newEntry) {
-              newEntries.push(newEntry);
-            }
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const json = XLSX.utils.sheet_to_json<{ email: string }>(worksheet);
+
+          const tokenPromises = json
+            .map(row => row.email?.trim())
+            .filter((email): email is string => !!email)
+            .map(email => addEmailAndGenerateToken(email));
+          
+          const newEntries = (await Promise.all(tokenPromises)).filter((entry): entry is TokenEntry => entry !== null);
+          
+          if (newEntries.length > 0) {
+            setGeneratedTokens(prev => [...newEntries, ...prev]);
           }
-        }
-        setGeneratedTokens(prev => [...newEntries, ...prev]);
-        toast({ title: "XLSX Processed", description: `${newEntries.length} new tokens generated.` });
-        setIsLoading(false);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
+          
+          toast({ title: "XLSX Processed", description: `${newEntries.length} new tokens generated.` });
+
+        } catch (error) {
+           toast({ title: "XLSX Processing Failed", description: "There was an error processing the file." });
+           console.error(error);
+        } finally {
+            setIsLoading(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
         }
       };
       reader.readAsArrayBuffer(file);
