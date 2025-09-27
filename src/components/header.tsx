@@ -87,7 +87,7 @@ export function Header() {
                         <span>Interviewer Dashboard</span>
                       </DropdownMenuItem>
                     )}
-                     {!user.isAnonymous && !user.email && (
+                     {!user.isAnonymous && (
                       <DropdownMenuItem onClick={() => router.push('/candidate-dashboard')}>
                         <UserIcon className="mr-2 h-4 w-4" />
                         <span>My Dashboard</span>

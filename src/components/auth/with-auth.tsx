@@ -31,7 +31,7 @@ const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) =>
         if(isAnonymous && (isInterviewerRoute || isCandidateDashboardRoute)) {
             router.push('/');
         }
-        // If user is not anonymous, they should not access anonymous interview flow
+        // If user is not anonymous (i.e., signed in with Google), they should not access anonymous interview flow
         if(!isAnonymous && isCandidateInterviewRoute) {
             router.push('/candidate-dashboard');
         }
