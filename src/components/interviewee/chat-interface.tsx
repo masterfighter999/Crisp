@@ -50,9 +50,11 @@ export function ChatInterface() {
 
 
   const sendNextQuestion = useCallback(async () => {
-    if (!candidate || isFetchingQuestionRef.current) return;
+    const currentCandidate = useInterviewStore.getState().getActiveCandidate();
+    if (!currentCandidate || isFetchingQuestionRef.current) return;
     
-    if (candidate.interview.questions.length !== candidate.interview.answers.length) {
+    // This check is crucial. We only fetch a new question if the number of answers and questions is equal.
+    if (currentCandidate.interview.questions.length !== currentCandidate.interview.answers.length) {
       return;
     }
 
@@ -62,17 +64,19 @@ export function ChatInterface() {
 
     try {
       let newQuestion: InterviewQuestion | null = null;
-      const availableQuestions = questionBank.filter(q => q.difficulty === scheduleItem.difficulty && !candidate.interview.questions.some(asked => asked.questionText === q.questionText));
+      const schedule = INTERVIEW_SCHEDULE[currentCandidate.interview.answers.length];
+
+      const availableQuestions = questionBank.filter(q => q.difficulty === schedule.difficulty && !currentCandidate.interview.questions.some(asked => asked.questionText === q.questionText));
 
       if (availableQuestions.length > 0) {
         const randomIndex = Math.floor(Math.random() * availableQuestions.length);
         newQuestion = availableQuestions[randomIndex];
       } else {
-        console.warn(`No questions found in local question bank for difficulty: ${scheduleItem.difficulty}. Falling back to AI generation.`);
-        const questionText = await generateQuestionAction({ difficulty: scheduleItem.difficulty, topic: 'full stack' });
+        console.warn(`No questions found in local question bank for difficulty: ${schedule.difficulty}. Falling back to AI generation.`);
+        const questionText = await generateQuestionAction({ difficulty: schedule.difficulty, topic: 'full stack' });
         newQuestion = {
             questionText: questionText,
-            difficulty: scheduleItem.difficulty,
+            difficulty: schedule.difficulty,
             type: 'text'
         };
       }
@@ -81,11 +85,8 @@ export function ChatInterface() {
         throw new Error('Failed to select or generate a question.');
       }
 
-      await addQuestion(candidate.id, newQuestion);
-      await addAiChatMessage(candidate.id, newQuestion.questionText);
-      setUserAnswer('');
-      isSubmittingRef.current = false; // Release the lock
-
+      await addQuestion(currentCandidate.id, newQuestion);
+      await addAiChatMessage(currentCandidate.id, newQuestion.questionText);
     } catch (error: any) {
       console.error(error);
       setQuestionError(true);
@@ -94,44 +95,105 @@ export function ChatInterface() {
         title: 'Failed to get question.',
         description: "There was an issue loading the next question. Please click 'Retry' to try again.",
       });
-      isSubmittingRef.current = false; // Also release lock on error
     } finally {
       setIsLoading(false);
       isFetchingQuestionRef.current = false;
     }
-  }, [candidate, scheduleItem, questionBank, addQuestion, addAiChatMessage, toast]);
+  }, [questionBank, addQuestion, addAiChatMessage, toast]);
   
-  const handleAnswerSubmit = useCallback(async () => {
-    if (isSubmittingRef.current) return; // Synchronous check with ref
-    isSubmittingRef.current = true; // Engage lock immediately
-
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (!candidate || !currentQuestion || isLoading || questionError) {
-        isSubmittingRef.current = false; // Release lock if we exit early
-        return;
-    }
-
-    const answerToSubmit = userAnswer.trim() || "Time's up! No answer provided.";
+  const finalizeInterview = useCallback(async () => {
+    const currentCandidate = useInterviewStore.getState().getActiveCandidate();
+    if (!currentCandidate || currentCandidate.interview.status === 'COMPLETED' || isLoading) return;
     
-    await addUserChatMessage(candidate.id, answerToSubmit);
-    await submitAnswer(candidate.id, answerToSubmit);
+    setIsLoading(true);
+    
+    const finalizingMessage = 'Thank you for completing the interview. I am now generating your performance summary...';
+    if (!currentCandidate.interview.chatHistory.some(m => m.content === finalizingMessage)) {
+       await addAiChatMessage(currentCandidate.id, finalizingMessage);
+    }
+    
+    const chatHistoryString = currentCandidate.interview.chatHistory
+      .map(msg => `${msg.role}: ${msg.content}`)
+      .join('\n');
+      
+    const summaryData = await getInterviewSummary({ chatHistory: chatHistoryString });
+    
+    if (summaryData) {
+      await completeInterview(currentCandidate.id, summaryData.summary, summaryData.finalScore);
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Could not generate interview summary.'
+        });
+        await completeInterview(currentCandidate.id, 'Error generating summary.', 0);
+    }
+    setIsLoading(false);
+  }, [addAiChatMessage, completeInterview, toast, isLoading]);
 
-  }, [candidate, currentQuestion, isLoading, questionError, addUserChatMessage, submitAnswer]);
+  const handleAnswerSubmit = useCallback(async () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    try {
+        const currentCandidate = useInterviewStore.getState().getActiveCandidate();
+        if (!currentCandidate || !currentQuestion || isLoading || questionError) {
+            return;
+        }
+
+        const answerToSubmit = userAnswer.trim() || "Time's up! No answer provided.";
+        
+        await addUserChatMessage(currentCandidate.id, answerToSubmit);
+        await submitAnswer(currentCandidate.id, answerToSubmit);
+
+        setUserAnswer(''); // Clear the input
+
+        // Check if the interview should continue
+        const nextAnswersLength = currentCandidate.interview.answers.length + 1;
+        if (nextAnswersLength < INTERVIEW_SCHEDULE.length) {
+            sendNextQuestion();
+        } else {
+            finalizeInterview();
+        }
+
+    } catch (error) {
+        console.error("Error submitting answer:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Submission Error',
+            description: 'There was an error submitting your answer.'
+        });
+    } finally {
+        isSubmittingRef.current = false; // Always release the lock
+    }
+  }, [
+      userAnswer, // Added to dependency array
+      currentQuestion, 
+      isLoading, 
+      questionError, 
+      addUserChatMessage, 
+      submitAnswer, 
+      sendNextQuestion, 
+      finalizeInterview,
+      toast
+  ]);
 
 
   useEffect(() => {
-    if (
-      candidate?.interview.status === 'IN_PROGRESS' &&
-      candidate.interview.answers.length < INTERVIEW_SCHEDULE.length &&
-      candidate.interview.questions.length === candidate.interview.answers.length
-    ) {
-      sendNextQuestion();
+    // This effect now only fetches the very first question.
+    if (candidate?.interview.status === 'IN_PROGRESS' && candidate.interview.questions.length === 0 && !isFetchingQuestionRef.current) {
+        sendNextQuestion();
     }
-  }, [candidate?.interview.status, candidate?.interview.answers.length, candidate?.interview.questions.length, sendNextQuestion]);
+  }, [candidate?.interview.status, candidate?.interview.questions.length, sendNextQuestion]);
 
 
   useEffect(() => {
     if (currentQuestion && !hasAnsweredCurrent && !isLoading && candidate?.interview.status === 'IN_PROGRESS') {
+      // Guard against scheduleItem being undefined after the last question
+      if (!scheduleItem) return;
+
       const duration = scheduleItem.duration;
       setTimeLeft(duration);
 
@@ -153,42 +215,6 @@ export function ChatInterface() {
       }
     };
   }, [currentQuestion, hasAnsweredCurrent, isLoading, candidate?.id, candidate?.interview.status, scheduleItem, handleAnswerSubmit]);
-  
-  const finalizeInterview = useCallback(async () => {
-    if (!candidate || candidate.interview.status === 'COMPLETED' || isLoading) return;
-    
-    setIsLoading(true);
-    
-    const finalizingMessage = 'Thank you for completing the interview. I am now generating your performance summary...';
-    if (!candidate.interview.chatHistory.some(m => m.content === finalizingMessage)) {
-       await addAiChatMessage(candidate.id, finalizingMessage);
-    }
-    
-    const chatHistoryString = candidate.interview.chatHistory
-      .map(msg => `${msg.role}: ${msg.content}`)
-      .join('\n');
-      
-    const summaryData = await getInterviewSummary({ chatHistory: chatHistoryString });
-    
-    if (summaryData) {
-      await completeInterview(candidate.id, summaryData.summary, summaryData.finalScore);
-    } else {
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Could not generate interview summary.'
-        });
-        await completeInterview(candidate.id, 'Error generating summary.', 0);
-    }
-    setIsLoading(false);
-  }, [candidate, addAiChatMessage, completeInterview, toast, isLoading]);
-  
-  useEffect(() => {
-    if (candidate?.interview.status === 'IN_PROGRESS' && candidate.interview.answers.length === INTERVIEW_SCHEDULE.length) {
-      finalizeInterview();
-    }
-  }, [candidate?.interview.answers.length, candidate?.interview.status, finalizeInterview]);
-
 
   const progressPercentage = scheduleItem ? (timeLeft / scheduleItem.duration) * 100 : 0;
   
@@ -262,10 +288,10 @@ export function ChatInterface() {
                     value={userAnswer}
                     onChange={(e) => setUserAnswer(e.target.value)}
                     className="pr-20 min-h-[80px]"
-                    disabled={hasAnsweredCurrent || isSubmittingRef.current}
+                    disabled={isSubmittingRef.current}
                 />
 
-                <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={hasAnsweredCurrent || isSubmittingRef.current}>
+                <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={isSubmittingRef.current}>
                     {isSubmittingRef.current ? <Loader2 className="size-4 animate-spin"/> : <Send className="size-4" />}
                 </Button>
             </form>
