@@ -16,19 +16,6 @@ import {
   parseResume,
   type ParseResumeInput,
 } from '@/ai/flows/parse-resume';
-import { generateAllInterviewQuestions } from '@/ai/flows/generate-all-interview-questions';
-import type { GenerateAllInterviewQuestionsInput } from '@/ai/flows/generate-all-interview-questions.types';
-
-
-export async function getAllInterviewQuestions(input: GenerateAllInterviewQuestionsInput) {
-    try {
-        const result = await generateAllInterviewQuestions(input);
-        return result;
-    } catch (error) {
-        console.error('Error in getAllInterviewQuestions:', error);
-        return { questions: [] };
-    }
-}
 
 export async function getInterviewQuestion(
   input: GenerateInterviewQuestionInput

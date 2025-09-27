@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { UploadCloud, File, X, PartyPopper, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { parseResumeAction, getAllInterviewQuestions } from '@/app/actions';
+import { parseResumeAction } from '@/app/actions';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { useAuth } from '@/context/auth-context';
@@ -115,7 +115,7 @@ export function Onboarding() {
         try {
           const parsedData = await parseResumeAction({ resumeDataUri });
           
-          if (parsedData) {
+           if (parsedData) {
             const tokenEmail = form.getValues('email');
             
             if (parsedData.email && parsedData.email.toLowerCase() !== tokenEmail.toLowerCase()) {
@@ -134,7 +134,7 @@ export function Onboarding() {
             
             toast({
               title: 'Resume Parsed',
-              description: `Name: ${newName || 'Not found'}\nPhone: ${newPhone || 'Not found'}`,
+              description: `Name: ${newName || 'Not found'}, Phone: ${newPhone || 'Not found'}`,
             });
           }
         } catch (error) {
@@ -178,20 +178,7 @@ export function Onboarding() {
     if(!activeCandidate) return;
     setIsStarting(true);
     try {
-        const result = await getAllInterviewQuestions({
-            topic: 'full stack',
-            schedule: INTERVIEW_SCHEDULE,
-        });
-
-        if (result.questions && result.questions.length === INTERVIEW_SCHEDULE.length) {
-            await startInterview(activeCandidate.id, result.questions);
-        } else {
-             toast({
-                variant: 'destructive',
-                title: 'Failed to Start Interview',
-                description: 'Could not generate the interview questions. Please try again.',
-            });
-        }
+        await startInterview(activeCandidate.id, []); // Start with an empty question array
     } catch (error) {
         toast({
             variant: 'destructive',

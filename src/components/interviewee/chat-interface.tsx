@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useInterviewStore, INTERVIEW_SCHEDULE } from '@/lib/store';
-import { getInterviewSummary } from '@/app/actions';
+import { getInterviewSummary, getInterviewQuestion } from '@/app/actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,6 +21,7 @@ export function ChatInterface() {
     submitAnswer,
     addAiChatMessage,
     addUserChatMessage,
+    addQuestion,
     completeInterview,
   } = useInterviewStore();
 
@@ -47,25 +48,34 @@ export function ChatInterface() {
 
 
   const sendNextQuestion = async () => {
-      if (!candidate) return;
-      
-      const questionIndex = candidate.interview.currentQuestionIndex;
-      const questions = candidate.interview.questions;
+    if (!candidate || !scheduleItem) return;
 
-      if (questionIndex >= questions.length) {
-          finalizeInterview();
-          return;
-      }
-      
-      const nextQuestion = questions[questionIndex];
-      if (nextQuestion) {
-          setIsLoading(true);
-          await addAiChatMessage(candidate.id, nextQuestion.question);
-          setIsLoading(false);
-          // Reset answer state for new question
-          setUserAnswer('');
-          setSelectedMcqOption(null);
-      }
+    if (currentQuestionIndex >= INTERVIEW_SCHEDULE.length) {
+      finalizeInterview();
+      return;
+    }
+    
+    setIsLoading(true);
+    const newQuestion = await getInterviewQuestion({
+      difficulty: scheduleItem.difficulty,
+      topic: 'full stack',
+      type: scheduleItem.type,
+    });
+    
+    if (newQuestion) {
+        await addQuestion(candidate.id, newQuestion);
+        await addAiChatMessage(candidate.id, newQuestion.question);
+        // Reset answer state for new question
+        setUserAnswer('');
+        setSelectedMcqOption(null);
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Could not generate a new question. Please try refreshing.'
+        });
+    }
+    setIsLoading(false);
   };
   
   const handleAnswerSubmit = async () => {
@@ -89,18 +99,16 @@ export function ChatInterface() {
   };
 
   useEffect(() => {
-    // This effect now simply sends the next question from the pre-loaded list.
     if (candidate?.interview.status === 'IN_PROGRESS') {
       const hasAnsweredCurrent = candidate.interview.answers.length > currentQuestionIndex;
       if (!hasAnsweredCurrent) {
-          // If the current question hasn't been sent to chat yet, send it.
-          const currentQuestionInChat = candidate.interview.chatHistory.some(m => m.content === currentQuestion?.question);
-          if (currentQuestion && !currentQuestionInChat) {
-              sendNextQuestion();
-          }
+        // If there's no question for the current index, fetch one.
+        if (!candidate.interview.questions[currentQuestionIndex]) {
+          sendNextQuestion();
+        }
       }
     }
-  }, [candidate?.id, currentQuestionIndex, candidate?.interview.answers.length]);
+  }, [candidate?.id, currentQuestionIndex, candidate?.interview.questions.length]);
 
 
   useEffect(() => {
@@ -148,27 +156,23 @@ export function ChatInterface() {
   
   const progressPercentage = scheduleItem ? (timeLeft / scheduleItem.duration) * 100 : 0;
   
-  if (!candidate || !currentQuestion || !scheduleItem) {
-     if (candidate && candidate.interview.status === 'IN_PROGRESS' && currentQuestionIndex >= INTERVIEW_SCHEDULE.length) {
-       // This handles the case where the interview is finished but summary is being generated.
-        return (
-             <Card className="w-full max-w-3xl mx-auto mt-8">
-                <CardHeader className="text-center">
-                    <CardTitle>Finalizing Your Results</CardTitle>
-                    <CardDescription>This may take a moment.</CardDescription>
-                </CardHeader>
-                <CardContent className="flex justify-center items-center h-96">
-                    <div className="flex flex-col items-center space-y-4 text-center">
-                        <Loader2 className="size-8 animate-spin text-primary" />
-                        <p className="text-muted-foreground max-w-md">
-                            The AI is analyzing your full interview transcript to generate a detailed performance summary and a final score.
-                        </p>
-                    </div>
-                </CardContent>
-            </Card>
-        );
-     }
-      return null;
+  if (!candidate || (candidate.interview.status === 'IN_PROGRESS' && currentQuestionIndex >= INTERVIEW_SCHEDULE.length)) {
+      return (
+            <Card className="w-full max-w-3xl mx-auto mt-8">
+              <CardHeader className="text-center">
+                  <CardTitle>Finalizing Your Results</CardTitle>
+                  <CardDescription>This may take a moment.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex justify-center items-center h-96">
+                  <div className="flex flex-col items-center space-y-4 text-center">
+                      <Loader2 className="size-8 animate-spin text-primary" />
+                      <p className="text-muted-foreground max-w-md">
+                          The AI is analyzing your full interview transcript to generate a detailed performance summary and a final score.
+                      </p>
+                  </div>
+              </CardContent>
+          </Card>
+      );
   }
 
   const isQuestionAnswered = candidate.interview.answers.length > currentQuestionIndex;
@@ -191,46 +195,50 @@ export function ChatInterface() {
                     {candidate?.interview.chatHistory.map((message, index) => (
                         <ChatMessageItem key={index} message={message} />
                     ))}
-                    {isLoading && <LoadingSpinner />}
+                    {isLoading && !currentQuestion && <LoadingSpinner />}
                  </div>
             </ScrollArea>
         </div>
         
         <div className="mt-4">
-            <div className="flex items-center gap-4 mb-2">
-                <p className="text-sm font-medium">Time remaining: {timeLeft}s</p>
-                <Progress value={progressPercentage} className="w-full [&>div]:bg-accent" />
-            </div>
-            <form onSubmit={(e: FormEvent) => {e.preventDefault(); handleAnswerSubmit()}} className="relative">
-                {currentQuestion.type === 'text' && (
-                    <Textarea 
-                        placeholder="Type your answer here..."
-                        value={userAnswer}
-                        onChange={(e) => setUserAnswer(e.target.value)}
-                        className="pr-20 min-h-[80px]"
-                        disabled={isLoading || isQuestionAnswered}
-                    />
-                )}
-                 {currentQuestion.type === 'mcq' && (
-                    <RadioGroup 
-                        className="space-y-2" 
-                        value={selectedMcqOption?.toString()}
-                        onValueChange={(val) => setSelectedMcqOption(parseInt(val))}
-                        disabled={isLoading || isQuestionAnswered}
-                    >
-                        {currentQuestion.options.map((option, index) => (
-                            <div key={index} className="flex items-center space-x-2 rounded-md border p-3">
-                                <RadioGroupItem value={index.toString()} id={`option-${index}`} />
-                                <Label htmlFor={`option-${index}`} className="flex-grow cursor-pointer">{option}</Label>
-                            </div>
-                        ))}
-                    </RadioGroup>
-                )}
+            {currentQuestion && (
+              <>
+                <div className="flex items-center gap-4 mb-2">
+                    <p className="text-sm font-medium">Time remaining: {timeLeft}s</p>
+                    <Progress value={progressPercentage} className="w-full [&>div]:bg-accent" />
+                </div>
+                <form onSubmit={(e: FormEvent) => {e.preventDefault(); handleAnswerSubmit()}} className="relative">
+                    {currentQuestion.type === 'text' && (
+                        <Textarea 
+                            placeholder="Type your answer here..."
+                            value={userAnswer}
+                            onChange={(e) => setUserAnswer(e.target.value)}
+                            className="pr-20 min-h-[80px]"
+                            disabled={isLoading || isQuestionAnswered}
+                        />
+                    )}
+                    {currentQuestion.type === 'mcq' && (
+                        <RadioGroup 
+                            className="space-y-2" 
+                            value={selectedMcqOption?.toString()}
+                            onValueChange={(val) => setSelectedMcqOption(parseInt(val))}
+                            disabled={isLoading || isQuestionAnswered}
+                        >
+                            {currentQuestion.options.map((option, index) => (
+                                <div key={index} className="flex items-center space-x-2 rounded-md border p-3">
+                                    <RadioGroupItem value={index.toString()} id={`option-${index}`} />
+                                    <Label htmlFor={`option-${index}`} className="flex-grow cursor-pointer">{option}</Label>
+                                </div>
+                            ))}
+                        </RadioGroup>
+                    )}
 
-                <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={isLoading || isQuestionAnswered}>
-                    <Send className="size-4" />
-                </Button>
-            </form>
+                    <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={isLoading || isQuestionAnswered}>
+                        <Send className="size-4" />
+                    </Button>
+                </form>
+              </>
+            )}
         </div>
       </CardContent>
     </Card>
@@ -269,7 +277,7 @@ function LoadingSpinner() {
             </Avatar>
             <div className="max-w-md p-3 rounded-lg bg-background flex items-center space-x-2">
                 <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Thinking...</span>
+                <span className="text-sm text-muted-foreground">Generating question...</span>
             </div>
         </div>
     )
