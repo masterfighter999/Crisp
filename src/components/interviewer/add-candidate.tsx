@@ -1,8 +1,8 @@
 // src/components/interviewer/add-candidate.tsx
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { firestore } from '@/lib/firebase';
-import { collection, addDoc, getDocs, query, where, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, Timestamp, orderBy } from 'firebase/firestore';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -42,6 +42,29 @@ export function AddCandidate() {
     resolver: zodResolver(formSchema),
     defaultValues: { email: '' },
   });
+
+  useEffect(() => {
+    const fetchTokens = async () => {
+      setIsLoading(true);
+      try {
+        const tokensCollection = collection(firestore, 'interviewTokens');
+        const q = query(tokensCollection, orderBy('createdAt', 'desc'));
+        const querySnapshot = await getDocs(q);
+        const tokens = querySnapshot.docs.map(doc => doc.data() as TokenEntry);
+        setGeneratedTokens(tokens);
+      } catch (error) {
+        console.error("Error fetching tokens: ", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not fetch existing tokens."
+        })
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTokens();
+  }, [toast]);
 
   const addEmailAndGenerateToken = async (email: string) => {
     if (!email) return null;
