@@ -32,7 +32,6 @@ export function ChatInterface() {
   
   const isFetchingQuestionRef = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const scrollAreaViewportRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
@@ -222,8 +221,8 @@ export function ChatInterface() {
         </div>
       </CardHeader>
       <CardContent className="flex-grow flex flex-col min-h-0">
-        <ScrollArea className="flex-grow pr-4 -mr-4" viewportRef={scrollAreaViewportRef}>
-              <div className="space-y-6 p-4">
+        <ScrollArea className="flex-grow pr-4 -mr-4">
+              <div className="space-y-6 p-4 pb-4">
                 {candidate.interview.chatHistory.map((message, index) => (
                     <ChatMessageItem key={index} message={message} />
                 ))}
@@ -301,3 +300,5 @@ function LoadingSpinner() {
         </div>
     )
 }
+
+    
