@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
@@ -45,6 +46,20 @@ export function Header() {
   };
 
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/candidate-login');
+  const isInterviewerDashboard = pathname.startsWith('/dashboard');
+
+  const getUserRole = () => {
+    if (user?.isAnonymous) {
+      return 'Candidate (Guest)';
+    }
+    if (user?.email) {
+      if (isInterviewerDashboard || user.email.endsWith('@interviewer.com')) {
+        return 'Interviewer';
+      }
+      return 'Candidate';
+    }
+    return 'User';
+  };
 
   return (
     <>
@@ -73,8 +88,8 @@ export function Header() {
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
                         <p className="text-sm font-medium leading-none flex items-center">
-                           {user.isAnonymous ? 'Candidate (Guest)' : (user.email ? 'Interviewer/Candidate' : 'User')}
-                           {!user.isAnonymous && user.email?.endsWith('@interviewer.com') && <ShieldCheck className="ml-2 size-4 text-primary" />}
+                           {getUserRole()}
+                           {(isInterviewerDashboard || user.email?.endsWith('@interviewer.com')) && !user.isAnonymous && <ShieldCheck className="ml-2 size-4 text-primary" />}
                         </p>
                         <p className="text-xs leading-none text-muted-foreground">
                           {user.email || 'guest'}
