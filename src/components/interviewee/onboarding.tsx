@@ -123,6 +123,10 @@ export function Onboarding() {
             });
           } finally {
             setIsParsing(false);
+            // Reset the file input to allow re-uploading the same file
+            if(fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
           }
         };
       } else {
