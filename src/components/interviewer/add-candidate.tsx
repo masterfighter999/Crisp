@@ -44,6 +44,7 @@ interface TokenEntry {
   email: string;
   token: string;
   companyDomain: string;
+  createdAt: Timestamp;
 }
 
 export function AddCandidate() {
@@ -73,9 +74,19 @@ export function AddCandidate() {
         if (!companyDomain) return;
 
         const tokensCollection = collection(firestore, 'interviewTokens');
-        const q = query(tokensCollection, where('companyDomain', '==', companyDomain), orderBy('createdAt', 'desc'));
+        // Filter by company and only fetch tokens that are still valid.
+        const q = query(
+          tokensCollection, 
+          where('companyDomain', '==', companyDomain),
+          where('isValid', '==', true)
+        );
+
         const querySnapshot = await getDocs(q);
         const tokens = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as TokenEntry));
+        
+        // Sort tokens by creation date on the client side to avoid indexing issues.
+        tokens.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+        
         setGeneratedTokens(tokens);
       } catch (error) {
         console.error("Error fetching tokens: ", error);
@@ -98,29 +109,30 @@ export function AddCandidate() {
     if (!companyDomain) return null;
 
     const tokensCollection = collection(firestore, 'interviewTokens');
-    // Check for token for the same email within the same company
-    const q = query(tokensCollection, where('email', '==', email), where('companyDomain', '==', companyDomain));
+    // Check for an *active* token for the same email within the same company
+    const q = query(tokensCollection, where('email', '==', email), where('companyDomain', '==', companyDomain), where('isValid', '==', true));
     const querySnapshot = await getDocs(q);
 
     if (!querySnapshot.empty) {
       toast({
         variant: 'destructive',
-        title: 'Email Exists',
-        description: `A token already exists for ${email} in your organization.`,
+        title: 'Active Token Exists',
+        description: `An unused token already exists for ${email} in your organization.`,
       });
       return null;
     }
 
     const token = uuidv4();
+    const createdAt = Timestamp.now();
     try {
       const docRef = await addDoc(tokensCollection, {
         email,
         token,
-        createdAt: Timestamp.now(),
+        createdAt,
         isValid: true,
         companyDomain,
       });
-      return { id: docRef.id, email, token, companyDomain };
+      return { id: docRef.id, email, token, companyDomain, createdAt };
     } catch (error) {
       console.error('Error adding document: ', error);
       toast({
@@ -175,14 +187,11 @@ export function AddCandidate() {
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
           
-          // Use sheet_to_json with header: 1 to get an array of arrays.
           const rows = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 });
           
-          // Check if the first row looks like a header (i.e., not an email)
           const firstRowFirstCell = rows[0]?.[0] || '';
           const hasHeader = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(firstRowFirstCell);
           
-          // If there is a header, start from the second row, otherwise start from the first.
           const dataRows = hasHeader ? rows.slice(1) : rows;
 
           const emails = dataRows.map(row => row[0]?.trim()).filter(email => !!email);
@@ -192,7 +201,7 @@ export function AddCandidate() {
           const newEntries = (await Promise.all(tokenPromises)).filter((entry): entry is TokenEntry => entry !== null);
           
           if (newEntries.length > 0) {
-            setGeneratedTokens(prev => [...newEntries, ...prev]);
+            setGeneratedTokens(prev => [...newEntries, ...prev].sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
           }
           
           toast({ title: "XLSX Processed", description: `${newEntries.length} new tokens generated from ${emails.length} unique emails.` });
@@ -221,7 +230,7 @@ export function AddCandidate() {
       <CardHeader>
         <CardTitle>Manage Candidate Access</CardTitle>
         <CardDescription>
-          Add candidate emails to generate unique interview tokens for your organization.
+          Add candidate emails to generate unique, unused interview tokens for your organization.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -274,7 +283,7 @@ export function AddCandidate() {
 
         {generatedTokens.length > 0 && (
           <div>
-            <h3 className="font-medium text-lg mb-4">Generated Tokens</h3>
+            <h3 className="font-medium text-lg mb-4">Active Tokens</h3>
             <div className="rounded-md border max-h-64 overflow-y-auto">
               <Table>
                 <TableHeader>
