@@ -128,56 +128,56 @@ export function Onboarding() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-6">
-          <div>
-            <FormLabel>Resume (PDF or DOCX)</FormLabel>
-            <div
-              className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10 cursor-pointer hover:border-primary transition-colors data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50"
-              onClick={() => !isParsing && fileInputRef.current?.click()}
-              data-disabled={isParsing}
-            >
-              <div className="text-center">
-                {isParsing ? (
-                  <>
-                    <Loader2 className="mx-auto h-12 w-12 animate-spin text-muted-foreground" />
-                    <p className="mt-4 text-sm leading-6 text-muted-foreground">Parsing resume...</p>
-                  </>
-                ) : (
-                  <>
-                    <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
-                      <p className="pl-1">Click to upload or drag and drop</p>
-                    </div>
-                    <p className="text-xs leading-5 text-muted-foreground">PDF, DOCX up to 10MB</p>
-                  </>
-                )}
-              </div>
-            </div>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              className="hidden"
-              accept=".pdf,.docx"
-              disabled={isParsing}
-            />
-            {resumeFile && !isParsing && (
-              <div className="mt-4 flex items-center justify-between bg-muted/50 p-3 rounded-md">
-                <div className="flex items-center gap-3">
-                  <File className="size-6 text-primary" />
-                  <div>
-                    <p className="text-sm font-medium">{resumeFile.name}</p>
-                    <p className="text-xs text-muted-foreground">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                  </div>
+        <Form {...form}>
+          <div className="space-y-6">
+            <div>
+              <FormLabel>Resume (PDF or DOCX)</FormLabel>
+              <div
+                className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10 cursor-pointer hover:border-primary transition-colors data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50"
+                onClick={() => !isParsing && fileInputRef.current?.click()}
+                data-disabled={isParsing}
+              >
+                <div className="text-center">
+                  {isParsing ? (
+                    <>
+                      <Loader2 className="mx-auto h-12 w-12 animate-spin text-muted-foreground" />
+                      <p className="mt-4 text-sm leading-6 text-muted-foreground">Parsing resume...</p>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
+                      <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
+                        <p className="pl-1">Click to upload or drag and drop</p>
+                      </div>
+                      <p className="text-xs leading-5 text-muted-foreground">PDF, DOCX up to 10MB</p>
+                    </>
+                  )}
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => setResumeFile(null)}>
-                  <X className="size-4" />
-                </Button>
               </div>
-            )}
-          </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                accept=".pdf,.docx"
+                disabled={isParsing}
+              />
+              {resumeFile && !isParsing && (
+                <div className="mt-4 flex items-center justify-between bg-muted/50 p-3 rounded-md">
+                  <div className="flex items-center gap-3">
+                    <File className="size-6 text-primary" />
+                    <div>
+                      <p className="text-sm font-medium">{resumeFile.name}</p>
+                      <p className="text-xs text-muted-foreground">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => setResumeFile(null)}>
+                    <X className="size-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
 
-          <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
@@ -223,8 +223,8 @@ export function Onboarding() {
                 Save and Continue
               </Button>
             </form>
-          </Form>
-        </div>
+          </div>
+        </Form>
       </CardContent>
     </Card>
   );
