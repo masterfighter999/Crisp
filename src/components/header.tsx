@@ -48,12 +48,14 @@ export function Header() {
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/candidate-login');
   const isInterviewerDashboard = pathname.startsWith('/dashboard');
 
+  const isInterviewer = user?.email?.endsWith('@interviewer.com');
+
   const getUserRole = () => {
     if (user?.isAnonymous) {
       return 'Candidate (Guest)';
     }
     if (user?.email) {
-      if (isInterviewerDashboard || user.email.endsWith('@interviewer.com')) {
+      if (isInterviewer) {
         return 'Interviewer';
       }
       return 'Candidate';
@@ -89,7 +91,7 @@ export function Header() {
                       <div className="flex flex-col space-y-1">
                         <p className="text-sm font-medium leading-none flex items-center">
                            {getUserRole()}
-                           {(isInterviewerDashboard || user.email?.endsWith('@interviewer.com')) && !user.isAnonymous && <ShieldCheck className="ml-2 size-4 text-primary" />}
+                           {isInterviewer && <ShieldCheck className="ml-2 size-4 text-primary" />}
                         </p>
                         <p className="text-xs leading-none text-muted-foreground">
                           {user.email || 'guest'}
@@ -97,7 +99,7 @@ export function Header() {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {!user.isAnonymous && user.email && (
+                    {isInterviewer && (
                       <DropdownMenuItem onClick={() => router.push('/dashboard')}>
                         <LayoutDashboard className="mr-2 h-4 w-4" />
                         <span>Interviewer Dashboard</span>
