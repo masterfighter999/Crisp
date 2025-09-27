@@ -19,7 +19,7 @@ const formSchema = z.object({
 });
 
 export function Onboarding() {
-  const { createCandidate, getActiveCandidate, updateCandidateInfo, startInterview } = useInterviewStore();
+  const { createCandidate, getActiveCandidate, updateCandidateInfo, startInterview, activeCandidateId } = useInterviewStore();
   const [resumeFile, setResumeFile] = useState<{ name: string; size: number } | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -40,8 +40,9 @@ export function Onboarding() {
     const file = event.target.files?.[0];
     if (file) {
       if (file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        createCandidate();
-        setResumeFile({ name: file.name, size: file.size });
+        const candidateId = activeCandidateId || createCandidate();
+        const fileDetails = { name: file.name, size: file.size };
+        setResumeFile(fileDetails);
 
         setIsParsing(true);
         const reader = new FileReader();
@@ -51,6 +52,13 @@ export function Onboarding() {
           try {
             const parsedData = await parseResumeAction({ resumeDataUri });
             if (parsedData) {
+              const updatedInfo = {
+                name: parsedData.name || form.getValues('name'),
+                email: parsedData.email || form.getValues('email'),
+                phone: parsedData.phone || form.getValues('phone'),
+                resumeFile: fileDetails
+              };
+              updateCandidateInfo(candidateId, updatedInfo);
               if (parsedData.name) form.setValue('name', parsedData.name);
               if (parsedData.email) form.setValue('email', parsedData.email);
               if (parsedData.phone) form.setValue('phone', parsedData.phone);
