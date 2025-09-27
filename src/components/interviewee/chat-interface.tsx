@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, FormEvent, useCallback } from 'react';
 import { useInterviewStore, INTERVIEW_SCHEDULE } from '@/lib/store';
 import { getInterviewSummary, generateQuestionAction } from '@/app/actions';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
@@ -191,14 +191,14 @@ export function ChatInterface() {
 
   if (candidate.interview.status === 'IN_PROGRESS' && candidate.interview.answers.length === INTERVIEW_SCHEDULE.length) {
       return (
-          <Card className="w-full max-w-3xl mx-auto mt-8">
+          <Card className="w-full max-w-3xl mx-auto h-[70vh] flex flex-col">
             <CardHeader className="text-center">
                 <CardTitle>Finalizing Your Results</CardTitle>
                 <CardDescription>
                   The AI is analyzing your full interview transcript to generate a detailed performance summary and a final score. This may take a moment.
                 </CardDescription>
             </CardHeader>
-            <CardContent className="flex justify-center items-center h-96">
+            <CardContent className="flex-grow flex justify-center items-center">
                 <div className="flex flex-col items-center space-y-4 text-center">
                     <Loader2 className="size-8 animate-spin text-primary" />
                     <p className="text-muted-foreground max-w-md">
@@ -211,7 +211,7 @@ export function ChatInterface() {
   }
 
   return (
-    <Card className="w-full max-w-3xl mx-auto mt-8">
+    <Card className="w-full max-w-3xl mx-auto h-[80vh] flex flex-col">
       <CardHeader className="text-center">
         <CardTitle>Interview in Progress</CardTitle>
         <div className="pt-4">
@@ -221,47 +221,44 @@ export function ChatInterface() {
             <Progress value={(((candidate.interview.answers.length ?? 0)) / INTERVIEW_SCHEDULE.length) * 100} />
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="bg-muted/30 dark:bg-muted/20 p-4 rounded-lg h-96 flex flex-col">
-            <ScrollArea className="flex-grow pr-4" viewportRef={scrollAreaRef}>
-                 <div className="space-y-6">
-                    {candidate.interview.chatHistory.map((message, index) => (
-                        <ChatMessageItem key={index} message={message} />
-                    ))}
-                    {isLoading && <LoadingSpinner />}
-                 </div>
-            </ScrollArea>
-        </div>
-        
-        <div className="mt-4">
-            {questionError && !isLoading && (
-              <div className="flex justify-center">
-                 <Button onClick={sendNextQuestion}>Retry</Button>
+      <CardContent className="flex-grow flex flex-col min-h-0">
+        <ScrollArea className="flex-grow pr-4 -mr-4" viewportRef={scrollAreaRef}>
+              <div className="space-y-6 p-4">
+                {candidate.interview.chatHistory.map((message, index) => (
+                    <ChatMessageItem key={index} message={message} />
+                ))}
+                {isLoading && <LoadingSpinner />}
               </div>
-            )}
-            {!isLoading && !questionError && currentQuestion && !hasAnsweredCurrent && (
-              <>
-                <div className="flex items-center gap-4 mb-2">
-                    <p className="text-sm font-medium">Time remaining: {timeLeft}s</p>
-                    <Progress value={progressPercentage} className="w-full [&>div]:bg-accent" />
-                </div>
-                <form onSubmit={(e: FormEvent) => {e.preventDefault(); handleAnswerSubmit()}} className="relative">
-                    <Textarea 
-                        placeholder="Type your answer here..."
-                        value={userAnswer}
-                        onChange={(e) => setUserAnswer(e.target.value)}
-                        className="pr-20 min-h-[80px]"
-                        disabled={hasAnsweredCurrent}
-                    />
-
-                    <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={hasAnsweredCurrent}>
-                        <Send className="size-4" />
-                    </Button>
-                </form>
-              </>
-            )}
-        </div>
+        </ScrollArea>
       </CardContent>
+      <CardFooter className="flex-shrink-0 flex flex-col gap-4 pt-4 border-t">
+        {questionError && !isLoading && (
+          <div className="flex justify-center">
+              <Button onClick={sendNextQuestion}>Retry</Button>
+          </div>
+        )}
+        {!isLoading && !questionError && currentQuestion && !hasAnsweredCurrent && (
+          <>
+            <div className="flex items-center gap-4 w-full">
+                <p className="text-sm font-medium whitespace-nowrap">Time remaining: {timeLeft}s</p>
+                <Progress value={progressPercentage} className="w-full [&>div]:bg-accent" />
+            </div>
+            <form onSubmit={(e: FormEvent) => {e.preventDefault(); handleAnswerSubmit()}} className="relative w-full">
+                <Textarea 
+                    placeholder="Type your answer here..."
+                    value={userAnswer}
+                    onChange={(e) => setUserAnswer(e.target.value)}
+                    className="pr-20 min-h-[80px]"
+                    disabled={hasAnsweredCurrent}
+                />
+
+                <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={hasAnsweredCurrent}>
+                    <Send className="size-4" />
+                </Button>
+            </form>
+          </>
+        )}
+      </CardFooter>
     </Card>
   );
 }
