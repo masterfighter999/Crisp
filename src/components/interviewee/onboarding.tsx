@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, ChangeEvent } from 'react';
+import { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -11,6 +11,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { UploadCloud, File, X, PartyPopper, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { parseResumeAction } from '@/app/actions';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { firestore } from '@/lib/firebase';
+import { useAuth } from '@/context/auth-context';
+
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -19,11 +23,12 @@ const formSchema = z.object({
 });
 
 export function Onboarding() {
-  const { createCandidate, getActiveCandidate, updateCandidateInfo, startInterview, activeCandidateId } = useInterviewStore();
+  const { createCandidate, getActiveCandidate, updateCandidateInfo, startInterview, activeCandidateId, activeToken } = useInterviewStore();
   const [resumeFile, setResumeFile] = useState<{ name: string; size: number } | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const activeCandidate = getActiveCandidate();
 
@@ -35,12 +40,46 @@ export function Onboarding() {
       phone: activeCandidate?.phone || '',
     },
   });
+  
+  useEffect(() => {
+    const initializeCandidate = async () => {
+      if (activeToken && !activeCandidateId) {
+        // Fetch the email associated with the token
+        const tokensCollection = collection(firestore, 'interviewTokens');
+        const q = query(tokensCollection, where('token', '==', activeToken));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          const tokenDoc = querySnapshot.docs[0];
+          const email = tokenDoc.data().email;
+          const candidateId = createCandidate(email);
+          form.setValue('email', email);
+        }
+      } else if (activeCandidate) {
+        form.reset({
+          name: activeCandidate.name,
+          email: activeCandidate.email,
+          phone: activeCandidate.phone
+        });
+      }
+    };
+    initializeCandidate();
+  }, [activeToken, activeCandidateId, user]);
+
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       if (file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        const candidateId = activeCandidateId || createCandidate();
+        if (!activeCandidateId) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Cannot upload resume without an active session. Please re-validate your token.'
+            });
+            return;
+        }
+        
         const fileDetails = { name: file.name, size: file.size };
         setResumeFile(fileDetails);
 
@@ -54,13 +93,12 @@ export function Onboarding() {
             if (parsedData) {
               const updatedInfo = {
                 name: parsedData.name || form.getValues('name'),
-                email: parsedData.email || form.getValues('email'),
+                email: form.getValues('email'), // Keep the original email from token
                 phone: parsedData.phone || form.getValues('phone'),
                 resumeFile: fileDetails
               };
-              updateCandidateInfo(candidateId, updatedInfo);
+              updateCandidateInfo(activeCandidateId, updatedInfo);
               if (parsedData.name) form.setValue('name', parsedData.name);
-              if (parsedData.email) form.setValue('email', parsedData.email);
               if (parsedData.phone) form.setValue('phone', parsedData.phone);
                toast({
                 title: 'Resume Parsed',
@@ -88,8 +126,8 @@ export function Onboarding() {
   };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    const candidateId = activeCandidate?.id || createCandidate();
-    updateCandidateInfo(candidateId, { ...values, resumeFile });
+    if(!activeCandidateId) return;
+    updateCandidateInfo(activeCandidateId, { ...values, resumeFile });
   };
   
   const handleStartInterview = () => {
@@ -124,61 +162,74 @@ export function Onboarding() {
       <CardHeader>
         <CardTitle>Welcome to AI Interview Ace</CardTitle>
         <CardDescription>
-          Let's get started. Upload your resume or fill out your details below.
+          Let's get started. Your email is pre-filled from your token.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-          <div className="space-y-6">
-            <div>
-              <FormLabel>Resume (PDF or DOCX)</FormLabel>
-              <div
-                className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10 cursor-pointer hover:border-primary transition-colors data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50"
-                onClick={() => !isParsing && fileInputRef.current?.click()}
-                data-disabled={isParsing}
-              >
-                <div className="text-center">
-                  {isParsing ? (
-                    <>
-                      <Loader2 className="mx-auto h-12 w-12 animate-spin text-muted-foreground" />
-                      <p className="mt-4 text-sm leading-6 text-muted-foreground">Parsing resume...</p>
-                    </>
-                  ) : (
-                    <>
-                      <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
-                      <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
-                        <p className="pl-1">Click to upload or drag and drop</p>
-                      </div>
-                      <p className="text-xs leading-5 text-muted-foreground">PDF, DOCX up to 10MB</p>
-                    </>
-                  )}
-                </div>
-              </div>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                className="hidden"
-                accept=".pdf,.docx"
-                disabled={isParsing}
-              />
-              {resumeFile && !isParsing && (
-                <div className="mt-4 flex items-center justify-between bg-muted/50 p-3 rounded-md">
-                  <div className="flex items-center gap-3">
-                    <File className="size-6 text-primary" />
-                    <div>
-                      <p className="text-sm font-medium">{resumeFile.name}</p>
-                      <p className="text-xs text-muted-foreground">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
+        <div className="space-y-6">
+          <div>
+            <FormLabel>Resume (PDF or DOCX)</FormLabel>
+            <div
+              className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10 cursor-pointer hover:border-primary transition-colors data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50"
+              onClick={() => !isParsing && fileInputRef.current?.click()}
+              data-disabled={isParsing}
+            >
+              <div className="text-center">
+                {isParsing ? (
+                  <>
+                    <Loader2 className="mx-auto h-12 w-12 animate-spin text-muted-foreground" />
+                    <p className="mt-4 text-sm leading-6 text-muted-foreground">Parsing resume...</p>
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
+                      <p className="pl-1">Click to upload or drag and drop</p>
                     </div>
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={() => setResumeFile(null)}>
-                    <X className="size-4" />
-                  </Button>
-                </div>
-              )}
+                    <p className="text-xs leading-5 text-muted-foreground">PDF, DOCX up to 10MB</p>
+                  </>
+                )}
+              </div>
             </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept=".pdf,.docx"
+              disabled={isParsing}
+            />
+            {resumeFile && !isParsing && (
+              <div className="mt-4 flex items-center justify-between bg-muted/50 p-3 rounded-md">
+                <div className="flex items-center gap-3">
+                  <File className="size-6 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium">{resumeFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setResumeFile(null)}>
+                  <X className="size-4" />
+                </Button>
+              </div>
+            )}
+          </div>
 
+          <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email Address</FormLabel>
+                    <FormControl>
+                      <Input placeholder="john.doe@example.com" {...field} disabled />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="name"
@@ -187,19 +238,6 @@ export function Onboarding() {
                     <FormLabel>Full Name</FormLabel>
                     <FormControl>
                       <Input placeholder="John Doe" {...field} disabled={isParsing} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email Address</FormLabel>
-                    <FormControl>
-                      <Input placeholder="john.doe@example.com" {...field} disabled={isParsing} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -223,8 +261,8 @@ export function Onboarding() {
                 Save and Continue
               </Button>
             </form>
-          </div>
-        </Form>
+          </Form>
+        </div>
       </CardContent>
     </Card>
   );

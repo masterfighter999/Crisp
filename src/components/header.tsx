@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -19,20 +19,24 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from './ui/avatar';
-import { User } from 'lucide-react';
+import { User, ShieldCheck } from 'lucide-react';
+import { useInterviewStore } from '@/lib/store';
 
 export function Header() {
   const { user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [isSignupModalOpen, setSignupModalOpen] = useState(false);
+  const resetActiveCandidate = useInterviewStore(s => s.resetActiveCandidate);
 
   const handleSignOut = async () => {
     await signOut(auth);
-    router.push('/');
+    resetActiveCandidate();
+    router.push(pathname.startsWith('/dashboard') || pathname.startsWith('/login') ? '/login' : '/');
   };
   
   const getInitials = (email: string | null | undefined) => {
-    if (!email) return 'U';
+    if (!email) return <User className="size-4" />;
     return email.substring(0, 2).toUpperCase();
   };
 
@@ -52,7 +56,7 @@ export function Header() {
 
             <div className="flex items-center gap-2">
               {user ? (
-                 <DropdownMenu>
+                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                        <Avatar className="h-8 w-8">
@@ -63,17 +67,22 @@ export function Header() {
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">Interviewer</p>
+                        <p className="text-sm font-medium leading-none flex items-center">
+                           {user.isAnonymous ? 'Candidate' : 'Interviewer'}
+                           {!user.isAnonymous && <ShieldCheck className="ml-2 size-4 text-primary" />}
+                        </p>
                         <p className="text-xs leading-none text-muted-foreground">
-                          {user.email}
+                          {user.email || 'guest'}
                         </p>
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => router.push('/dashboard')}>
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
-                      <span>Dashboard</span>
-                    </DropdownMenuItem>
+                    {!user.isAnonymous && (
+                      <DropdownMenuItem onClick={() => router.push('/dashboard')}>
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        <span>Dashboard</span>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onClick={handleSignOut}>
                        <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>
@@ -81,12 +90,14 @@ export function Header() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <>
-                  <Button variant="ghost" onClick={() => router.push('/login')}>
-                    Log In
-                  </Button>
-                  <Button onClick={() => setSignupModalOpen(true)}>Sign Up</Button>
-                </>
+                 !pathname.startsWith('/login') && (
+                    <>
+                      <Button variant="ghost" onClick={() => router.push('/login')}>
+                        Interviewer Login
+                      </Button>
+                      <Button onClick={() => setSignupModalOpen(true)}>Sign Up</Button>
+                    </>
+                 )
               )}
             </div>
           </div>

@@ -16,8 +16,9 @@ export const INTERVIEW_SCHEDULE: { difficulty: 'Easy' | 'Medium' | 'Hard'; durat
 interface InterviewState {
   candidates: Candidate[];
   activeCandidateId: string | null;
+  activeToken: string | null;
   hydrated: boolean;
-  createCandidate: () => string;
+  createCandidate: (email: string) => string;
   updateCandidateInfo: (id: string, info: { name: string; email: string; phone: string; resumeFile: Candidate['resumeFile'] }) => void;
   setInterviewStatus: (candidateId: string, status: InterviewStatus) => void;
   startInterview: (candidateId: string) => void;
@@ -30,6 +31,7 @@ interface InterviewState {
   startOver: (candidateId: string) => void;
   resetActiveCandidate: () => void;
   setHydrated: (state: boolean) => void;
+  setToken: (token: string) => void;
 }
 
 const initialInterviewRecord = {
@@ -49,14 +51,24 @@ export const useInterviewStore = create<InterviewState>()(
     (set, get) => ({
       candidates: [],
       activeCandidateId: null,
+      activeToken: null,
       hydrated: false,
       setHydrated: (state) => set({ hydrated: state }),
-      createCandidate: () => {
+      setToken: (token) => {
+        set({ activeToken: token });
+      },
+      createCandidate: (email) => {
+        const existingCandidate = get().candidates.find(c => c.email === email);
+        if (existingCandidate) {
+          set({ activeCandidateId: existingCandidate.id });
+          return existingCandidate.id;
+        }
+
         const id = uuidv4();
         const newCandidate: Candidate = {
           id,
           name: '',
-          email: '',
+          email: email,
           phone: '',
           resumeFile: null,
           interview: { ...initialInterviewRecord },
@@ -169,6 +181,14 @@ export const useInterviewStore = create<InterviewState>()(
               : c
           ),
         }));
+        // Invalidate the token in Firestore after completion
+        const token = get().activeToken;
+        if (token) {
+            // In a real app, you would make a call to a secure backend/cloud function
+            // to invalidate the token. For this prototype, we'll assume it's handled.
+            console.log(`Token ${token} should be invalidated.`);
+        }
+
       },
       getActiveCandidate: () => {
         const { candidates, activeCandidateId } = get();
@@ -180,10 +200,6 @@ export const useInterviewStore = create<InterviewState>()(
             c.id === candidateId
               ? {
                   ...c,
-                  name: '',
-                  email: '',
-                  phone: '',
-                  resumeFile: null,
                   interview: { ...initialInterviewRecord },
                 }
               : c
@@ -191,7 +207,7 @@ export const useInterviewStore = create<InterviewState>()(
         }));
       },
       resetActiveCandidate: () => {
-        set({ activeCandidateId: null });
+        set({ activeCandidateId: null, activeToken: null });
       },
     }),
     {

@@ -2,21 +2,38 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
-
 
 const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) => {
   const Wrapper = (props: P) => {
     const { user, loading } = useAuth();
     const router = useRouter();
+    const pathname = usePathname();
 
     useEffect(() => {
-      if (!loading && !user) {
-        router.push('/login');
+      if (loading) return;
+      
+      const isInterviewerRoute = pathname.startsWith('/dashboard');
+      const isCandidateRoute = pathname.startsWith('/interview');
+      
+      if (!user) {
+        // If no user, redirect to appropriate login
+        if(isInterviewerRoute) router.push('/login');
+        else router.push('/'); // Assumes homepage is candidate token entry
+      } else {
+        const isAnonymous = user.isAnonymous;
+        // If user is anonymous, they should not access interviewer dashboard
+        if(isAnonymous && isInterviewerRoute) {
+            router.push('/');
+        }
+        // If user is not anonymous, they should not access anonymous interview flow
+        if(!isAnonymous && isCandidateRoute) {
+            router.push('/dashboard');
+        }
       }
-    }, [user, loading, router]);
+    }, [user, loading, router, pathname]);
 
     if (loading || !user) {
        return (
