@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, FormEvent, useCallback } from 'react';
 import { useInterviewStore, INTERVIEW_SCHEDULE } from '@/lib/store';
 import { getInterviewSummary, generateQuestionAction } from '@/app/actions';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
@@ -32,7 +32,8 @@ export function ChatInterface() {
   
   const isFetchingQuestionRef = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const scrollAreaViewportRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
   const candidate = getActiveCandidate();
@@ -44,9 +45,7 @@ export function ChatInterface() {
 
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [candidate?.interview.chatHistory]);
 
 
@@ -116,11 +115,12 @@ export function ChatInterface() {
   useEffect(() => {
     if (
       candidate?.interview.status === 'IN_PROGRESS' &&
-      candidate.interview.answers.length < INTERVIEW_SCHEDULE.length
+      candidate.interview.answers.length < INTERVIEW_SCHEDULE.length &&
+      candidate.interview.questions.length === candidate.interview.answers.length
     ) {
       sendNextQuestion();
     }
-  }, [candidate?.interview.status, candidate?.interview.answers.length, sendNextQuestion]);
+  }, [candidate?.interview.status, candidate?.interview.answers.length, candidate?.interview.questions.length, sendNextQuestion]);
 
 
   useEffect(() => {
@@ -212,7 +212,7 @@ export function ChatInterface() {
 
   return (
     <Card className="w-full max-w-3xl mx-auto h-[80vh] flex flex-col">
-      <CardHeader className="text-center">
+      <CardHeader className="text-center flex-shrink-0">
         <CardTitle>Interview in Progress</CardTitle>
         <div className="pt-4">
             <p className="text-sm text-muted-foreground mb-2">
@@ -222,12 +222,13 @@ export function ChatInterface() {
         </div>
       </CardHeader>
       <CardContent className="flex-grow flex flex-col min-h-0">
-        <ScrollArea className="flex-grow pr-4 -mr-4" viewportRef={scrollAreaRef}>
+        <ScrollArea className="flex-grow pr-4 -mr-4" viewportRef={scrollAreaViewportRef}>
               <div className="space-y-6 p-4">
                 {candidate.interview.chatHistory.map((message, index) => (
                     <ChatMessageItem key={index} message={message} />
                 ))}
                 {isLoading && <LoadingSpinner />}
+                 <div ref={messagesEndRef} />
               </div>
         </ScrollArea>
       </CardContent>
