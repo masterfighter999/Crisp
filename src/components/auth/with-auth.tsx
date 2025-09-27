@@ -36,7 +36,7 @@ const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) =>
 
       // At this point, user is authenticated
       const isAnonymous = user.isAnonymous;
-      const isInterviewer = user.email?.endsWith('@interviewer.com') ?? false;
+      const isInterviewer = (user.email?.endsWith('@interviewer.com') ?? false) || user.email === 'swayam.internship@gmail.com';
       const isAdmin = user.phoneNumber != null && ADMIN_PHONE_NUMBERS.includes(user.phoneNumber);
 
       // Rule 1: Protect interviewer dashboard
