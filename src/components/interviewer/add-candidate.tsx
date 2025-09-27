@@ -170,11 +170,11 @@ export function AddCandidate() {
         setGeneratedTokens(prev => [...newEntries, ...prev]);
         toast({ title: "XLSX Processed", description: `${newEntries.length} new tokens generated.` });
         setIsLoading(false);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
       };
       reader.readAsArrayBuffer(file);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
     }
   };
   
