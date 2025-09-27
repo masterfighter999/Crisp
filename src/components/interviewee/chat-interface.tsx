@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useInterviewStore, INTERVIEW_SCHEDULE } from '@/lib/store';
 import { getInterviewSummary } from '@/app/actions';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
@@ -138,12 +138,15 @@ export function ChatInterface() {
         return (
              <Card className="w-full max-w-3xl mx-auto mt-8">
                 <CardHeader className="text-center">
-                    <CardTitle>Finalizing...</CardTitle>
+                    <CardTitle>Finalizing Your Results</CardTitle>
+                    <CardDescription>This may take a moment.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex justify-center items-center h-96">
-                    <div className="flex items-center space-x-2">
+                    <div className="flex flex-col items-center space-y-4 text-center">
                         <Loader2 className="size-8 animate-spin text-primary" />
-                        <p className="text-muted-foreground">Please wait while we generate your results.</p>
+                        <p className="text-muted-foreground max-w-md">
+                            The AI is analyzing your full interview transcript to generate a detailed performance summary and a final score.
+                        </p>
                     </div>
                 </CardContent>
             </Card>
