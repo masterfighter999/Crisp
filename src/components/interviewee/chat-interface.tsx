@@ -34,6 +34,7 @@ export function ChatInterface() {
   const isSubmittingRef = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const userAnswerRef = useRef('');
   const { toast } = useToast();
   
   const candidate = getActiveCandidate();
@@ -42,6 +43,10 @@ export function ChatInterface() {
   const currentQuestion = candidate?.interview.questions[currentQuestionIndex];
   const scheduleItem = INTERVIEW_SCHEDULE[currentQuestionIndex];
   const hasAnsweredCurrent = (candidate?.interview.answers.length ?? 0) > currentQuestionIndex;
+
+  useEffect(() => {
+    userAnswerRef.current = userAnswer;
+  }, [userAnswer]);
 
 
   useEffect(() => {
@@ -134,50 +139,51 @@ export function ChatInterface() {
   const handleAnswerSubmit = useCallback(async () => {
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
-    
-    if (timerRef.current) clearInterval(timerRef.current);
+
+    // clear and null the timer immediately to avoid double submits
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
 
     try {
-        const currentCandidate = useInterviewStore.getState().getActiveCandidate();
-        if (!currentCandidate || !currentQuestion || isLoading || questionError) {
-            return;
-        }
+      const currentCandidate = useInterviewStore.getState().getActiveCandidate();
+      if (!currentCandidate || !currentQuestion || isLoading || questionError) {
+        return;
+      }
 
-        const answerToSubmit = userAnswer.trim() || "Time's up! No answer provided.";
-        
-        await addUserChatMessage(currentCandidate.id, answerToSubmit);
-        await submitAnswer(currentCandidate.id, answerToSubmit);
+      // read the latest answer from the ref (avoids stale closure)
+      const answerToSubmit = (userAnswerRef.current || '').trim() || "Time's up! No answer provided.";
 
-        setUserAnswer(''); // Clear the input
+      await addUserChatMessage(currentCandidate.id, answerToSubmit);
+      await submitAnswer(currentCandidate.id, answerToSubmit);
 
-        // Check if the interview should continue
-        const nextAnswersLength = currentCandidate.interview.answers.length + 1;
-        if (nextAnswersLength < INTERVIEW_SCHEDULE.length) {
-            sendNextQuestion();
-        } else {
-            finalizeInterview();
-        }
+      // clear the controlled input
+      setUserAnswer('');
 
-    } catch (error) {
-        console.error("Error submitting answer:", error);
-        toast({
-            variant: 'destructive',
-            title: 'Submission Error',
-            description: 'There was an error submitting your answer.'
-        });
+      // after submit, re-read the candidate and continue the flow
+      const updated = useInterviewStore.getState().getActiveCandidate();
+      if (!updated) return;
+
+      if (updated.interview.currentQuestionIndex < INTERVIEW_SCHEDULE.length) {
+        await sendNextQuestion();
+      } else {
+        await finalizeInterview();
+      }
+    } catch (err) {
+      console.error('handleAnswerSubmit error:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Submission failed',
+        description: 'There was an error submitting your answer. Please try again.',
+      });
     } finally {
-        isSubmittingRef.current = false; // Always release the lock
+      isSubmittingRef.current = false;
     }
   }, [
-      userAnswer, // Added to dependency array
-      currentQuestion, 
-      isLoading, 
-      questionError, 
-      addUserChatMessage, 
-      submitAnswer, 
-      sendNextQuestion, 
-      finalizeInterview,
-      toast
+    // keep only stable dependencies that don't change per keystroke
+    currentQuestion, isLoading, questionError,
+    addUserChatMessage, submitAnswer, sendNextQuestion, finalizeInterview, toast
   ]);
 
 
@@ -190,31 +196,41 @@ export function ChatInterface() {
 
 
   useEffect(() => {
-    if (currentQuestion && !hasAnsweredCurrent && !isLoading && candidate?.interview.status === 'IN_PROGRESS') {
-      // Guard against scheduleItem being undefined after the last question
-      if (!scheduleItem) return;
-
-      const duration = scheduleItem.duration;
-      setTimeLeft(duration);
-
-      timerRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            if(timerRef.current) clearInterval(timerRef.current);
-            handleAnswerSubmit();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    if (!currentQuestion || hasAnsweredCurrent || isLoading || candidate?.interview.status !== 'IN_PROGRESS') {
+      return;
     }
-    
+    if (!scheduleItem) return;
+
+    const duration = scheduleItem.duration;
+    setTimeLeft(duration);
+
+    // clear any existing timer first
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+          void handleAnswerSubmit(); // stable; safe to call
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+        timerRef.current = null;
       }
     };
-  }, [currentQuestion, hasAnsweredCurrent, isLoading, candidate?.id, candidate?.interview.status, scheduleItem, handleAnswerSubmit]);
+  }, [currentQuestionIndex, currentQuestion, hasAnsweredCurrent, isLoading, candidate?.id, candidate?.interview.status, scheduleItem, handleAnswerSubmit]);
 
   const progressPercentage = scheduleItem ? (timeLeft / scheduleItem.duration) * 100 : 0;
   
@@ -339,5 +355,7 @@ function LoadingSpinner() {
         </div>
     )
 }
+
+    
 
     
