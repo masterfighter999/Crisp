@@ -27,6 +27,8 @@ export function Onboarding() {
   const [resumeFile, setResumeFile] = useState<{ name: string; size: number } | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const [tokenData, setTokenData] = useState<{ email: string; companyDomain: string | null } | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -36,48 +38,45 @@ export function Onboarding() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: activeCandidate?.name || '',
-      email: activeCandidate?.email || '',
-      phone: activeCandidate?.phone || '',
+      name: '',
+      email: '',
+      phone: '',
     },
   });
   
   useEffect(() => {
     const initializeCandidate = async () => {
-      if (activeToken && !activeCandidateId) {
-        // Fetch the token document to get email and companyDomain
-        const tokensCollection = collection(firestore, 'interviewTokens');
-        const q = query(tokensCollection, where('token', '==', activeToken));
-        const querySnapshot = await getDocs(q);
+        if (user && !user.isAnonymous) { // Registered user
+             form.reset({
+                name: activeCandidate?.name || '',
+                email: activeCandidate?.email || user.email || '',
+                phone: activeCandidate?.phone || '',
+             });
+        } else if (activeToken && !activeCandidateId) { // Guest user with token
+            const tokensCollection = collection(firestore, 'interviewTokens');
+            const q = query(tokensCollection, where('token', '==', activeToken));
+            const querySnapshot = await getDocs(q);
 
-        if (!querySnapshot.empty) {
-          const tokenDoc = querySnapshot.docs[0].data();
-          const email = tokenDoc.email;
-          const companyDomain = tokenDoc.companyDomain;
-          // Pass companyDomain when creating candidate
-          const newCandidateId = await createCandidate(email, companyDomain);
-          const newCandidate = useInterviewStore.getState().candidates.find(c => c.id === newCandidateId);
-          if (newCandidate) {
-            form.reset({
-              name: newCandidate.name,
-              email: newCandidate.email,
-              phone: newCandidate.phone,
-            });
-          }
+            if (!querySnapshot.empty) {
+                const docData = querySnapshot.docs[0].data();
+                const email = docData.email;
+                const companyDomain = docData.companyDomain || null;
+                setTokenData({ email, companyDomain });
+                form.setValue('email', email);
+            }
+        } else if (activeCandidate) { // Returning user (guest or registered)
+             form.reset({
+                name: activeCandidate.name,
+                email: activeCandidate.email,
+                phone: activeCandidate.phone
+             });
+             if (activeCandidate.resumeFile) {
+                setResumeFile(activeCandidate.resumeFile);
+             }
         }
-      } else if (activeCandidate) {
-        form.reset({
-          name: activeCandidate.name,
-          email: activeCandidate.email,
-          phone: activeCandidate.phone
-        });
-        if (activeCandidate.resumeFile) {
-            setResumeFile(activeCandidate.resumeFile);
-        }
-      }
     };
     initializeCandidate();
-  }, [activeToken, activeCandidateId, user, createCandidate, form]);
+  }, [activeToken, activeCandidate, user, form]);
 
 
  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -90,15 +89,6 @@ export function Onboarding() {
           description: 'Please upload a PDF file.',
         });
         return;
-      }
-      
-      if (!activeCandidateId) {
-          toast({
-              variant: 'destructive',
-              title: 'Error',
-              description: 'Cannot upload resume without an active session. Please re-validate your token.'
-          });
-          return;
       }
       
       const fileDetails = { name: file.name, size: file.size };
@@ -120,7 +110,7 @@ export function Onboarding() {
             
             const currentEmail = form.getValues('email');
             
-            if (email && email.toLowerCase() !== currentEmail.toLowerCase()) {
+            if (email && currentEmail && email.toLowerCase() !== currentEmail.toLowerCase()) {
                 toast({
                     title: 'Email Mismatch Warning',
                     description: `The email on your resume (${email}) doesn't match the one for this interview (${currentEmail}).`,
@@ -162,8 +152,7 @@ export function Onboarding() {
   };
 
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    if(!activeCandidateId) return;
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if(!resumeFile) {
         toast({
             variant: 'destructive',
@@ -172,7 +161,14 @@ export function Onboarding() {
         });
         return;
     }
-    updateCandidateInfo(activeCandidateId, { ...values, resumeFile });
+
+    if (activeCandidateId) {
+        // This is an existing candidate (e.g., a registered user starting a new session)
+        await updateCandidateInfo(activeCandidateId, { ...values, resumeFile });
+    } else {
+        // This is a new guest candidate, create the record now
+        await createCandidate({ ...values, resumeFile, companyDomain: tokenData?.companyDomain });
+    }
   };
   
   const handleStartInterview = async () => {
@@ -278,7 +274,7 @@ export function Onboarding() {
                 <FormItem>
                   <FormLabel>Email Address</FormLabel>
                   <FormControl>
-                    <Input placeholder="john.doe@example.com" {...field} disabled />
+                    <Input placeholder="john.doe@example.com" {...field} disabled={!!tokenData?.email || !!(user && !user.isAnonymous)} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

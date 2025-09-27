@@ -24,7 +24,7 @@ interface InterviewState {
   fetchAllQuestions: () => Promise<void>;
   fetchAllCandidates: () => Promise<void>;
   fetchCandidate: (candidateId: string) => Promise<void>;
-  createCandidate: (email: string, companyDomain?: string) => Promise<string>;
+  createCandidate: (details: { name: string; email: string; phone: string; resumeFile: Candidate['resumeFile'], companyDomain?: string | null }) => Promise<string>;
   updateCandidateInfo: (id: string, info: { name: string; email: string; phone: string; resumeFile: Candidate['resumeFile'] }) => Promise<void>;
   deleteCandidate: (id: string) => Promise<void>;
   setInterviewStatus: (candidateId: string, status: InterviewStatus) => Promise<void>;
@@ -109,16 +109,16 @@ export const useInterviewStore = create<InterviewState>()(
             console.error("Error fetching candidate from Firestore: ", error);
         }
       },
-      createCandidate: async (email, companyDomain) => {
+      createCandidate: async (details) => {
         const id = uuidv4();
         const newCandidate: Candidate = {
           id,
-          name: '',
-          email: email,
-          phone: '',
-          resumeFile: null,
-          interview: { ...initialInterviewRecord },
-          companyDomain: companyDomain || null,
+          name: details.name,
+          email: details.email,
+          phone: details.phone,
+          resumeFile: details.resumeFile,
+          interview: { ...initialInterviewRecord, status: 'READY_TO_START' },
+          companyDomain: details.companyDomain || null,
         };
         
         await updateFirestoreCandidate(newCandidate);
