@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useInterviewStore } from '@/lib/store';
 import { CandidateList } from './candidate-list';
 import { CandidateDetail } from './candidate-detail';
@@ -22,11 +22,15 @@ import {
 
 export function InterviewerView() {
   const { user } = useAuth();
-  const { candidates, deleteCandidate } = useInterviewStore();
+  const { candidates, deleteCandidate, fetchAllCandidates } = useInterviewStore();
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [idsToDelete, setIdsToDelete] = useState<string[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    fetchAllCandidates();
+  }, [fetchAllCandidates]);
 
   const getCompanyDomain = () => {
       if (!user || !user.email) return null;

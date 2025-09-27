@@ -22,6 +22,7 @@ interface InterviewState {
   hydrated: boolean;
   questionBank: InterviewQuestion[];
   fetchAllQuestions: () => Promise<void>;
+  fetchAllCandidates: () => Promise<void>;
   fetchCandidate: (candidateId: string) => Promise<void>;
   createCandidate: (email: string, companyDomain?: string) => Promise<string>;
   updateCandidateInfo: (id: string, info: { name: string; email: string; phone: string; resumeFile: Candidate['resumeFile'] }) => Promise<void>;
@@ -82,6 +83,16 @@ export const useInterviewStore = create<InterviewState>()(
           console.log(`Fetched ${questions.length} questions into the question bank.`);
         } catch (error) {
           console.error("Error fetching all questions from Firestore: ", error);
+        }
+      },
+      fetchAllCandidates: async () => {
+        try {
+          const candidatesCollection = collection(firestore, 'candidates');
+          const querySnapshot = await getDocs(candidatesCollection);
+          const candidates = querySnapshot.docs.map(doc => doc.data() as Candidate);
+          set({ candidates: candidates });
+        } catch (error) {
+          console.error("Error fetching all candidates from Firestore: ", error);
         }
       },
       fetchCandidate: async (candidateId) => {
