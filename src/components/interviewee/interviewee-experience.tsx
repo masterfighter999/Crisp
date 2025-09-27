@@ -8,6 +8,9 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { CheckCircle, PartyPopper } from 'lucide-react';
+import { useAuth } from '@/context/auth-context';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { firestore } from '@/lib/firebase';
 
 export function IntervieweeExperience() {
   const {
@@ -16,12 +19,43 @@ export function IntervieweeExperience() {
     resetActiveCandidate,
     setInterviewStatus,
     startOver,
+    fetchCandidate,
+    candidates,
+    createCandidate
   } = useInterviewStore();
   
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const { user } = useAuth();
 
   const activeCandidate = getActiveCandidate();
   
+   useEffect(() => {
+    const syncUser = async () => {
+      if (user && !user.isAnonymous && user.email) {
+        // This is a logged-in user, check if they exist as a candidate
+        let candidate = candidates.find(c => c.email === user.email);
+        if (candidate) {
+          // If candidate exists in local state, ensure it's synced with Firestore
+          await fetchCandidate(candidate.id);
+        } else {
+           // If not in local state, try to find in Firestore
+           const candidatesCollection = collection(firestore, 'candidates');
+           const q = query(candidatesCollection, where('email', '==', user.email));
+           const querySnapshot = await getDocs(q);
+           if (!querySnapshot.empty) {
+             const candidateId = querySnapshot.docs[0].id;
+             await fetchCandidate(candidateId);
+           } else {
+             // If user is not in Firestore, it means they are new.
+             // createCandidate will also set active ID
+             await createCandidate(user.email);
+           }
+        }
+      }
+    };
+    syncUser();
+  }, [user]);
+
   useEffect(() => {
     if (activeCandidate?.interview.status === 'IN_PROGRESS') {
       setShowWelcomeModal(true);

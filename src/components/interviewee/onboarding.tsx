@@ -52,7 +52,7 @@ export function Onboarding() {
         if (!querySnapshot.empty) {
           const tokenDoc = querySnapshot.docs[0];
           const email = tokenDoc.data().email;
-          const candidateId = createCandidate(email);
+          await createCandidate(email);
           form.setValue('email', email);
         }
       } else if (activeCandidate) {
@@ -97,7 +97,7 @@ export function Onboarding() {
                 phone: parsedData.phone || form.getValues('phone'),
                 resumeFile: fileDetails
               };
-              updateCandidateInfo(activeCandidateId, updatedInfo);
+              await updateCandidateInfo(activeCandidateId, updatedInfo);
               if (parsedData.name) form.setValue('name', parsedData.name);
               if (parsedData.phone) form.setValue('phone', parsedData.phone);
                toast({

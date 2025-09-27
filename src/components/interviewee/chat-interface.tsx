@@ -52,18 +52,18 @@ export function ChatInterface() {
     const schedule = INTERVIEW_SCHEDULE[index];
     const { question } = await getInterviewQuestion({ difficulty: schedule.difficulty, topic: 'full stack' });
     if (candidate) {
-      addQuestion(candidate.id, { question, difficulty: schedule.difficulty });
-      addAiChatMessage(candidate.id, question);
+      await addQuestion(candidate.id, { question, difficulty: schedule.difficulty });
+      await addAiChatMessage(candidate.id, question);
     }
     setIsLoading(false);
   };
   
-  const handleAnswerSubmit = () => {
+  const handleAnswerSubmit = async () => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (candidate) {
       const answerToSubmit = userAnswer || "Time's up! No answer provided.";
-      addUserChatMessage(candidate.id, answerToSubmit);
-      submitAnswer(candidate.id, answerToSubmit);
+      await addUserChatMessage(candidate.id, answerToSubmit);
+      await submitAnswer(candidate.id, answerToSubmit);
       setUserAnswer('');
     }
   };
@@ -99,7 +99,7 @@ export function ChatInterface() {
   const finalizeInterview = async () => {
     if (!candidate) return;
     setIsLoading(true);
-    addAiChatMessage(candidate.id, 'Thank you for completing the interview. I am now generating your performance summary...');
+    await addAiChatMessage(candidate.id, 'Thank you for completing the interview. I am now generating your performance summary...');
     
     const chatHistoryString = candidate.interview.chatHistory
       .map(msg => `${msg.role}: ${msg.content}`)
@@ -107,14 +107,14 @@ export function ChatInterface() {
       
     const summaryData = await getInterviewSummary({ chatHistory: chatHistoryString });
     if (summaryData) {
-      completeInterview(candidate.id, summaryData.summary, summaryData.finalScore);
+      await completeInterview(candidate.id, summaryData.summary, summaryData.finalScore);
     } else {
         toast({
             variant: 'destructive',
             title: 'Error',
             description: 'Could not generate interview summary.'
         });
-        completeInterview(candidate.id, 'Error generating summary.', 0);
+        await completeInterview(candidate.id, 'Error generating summary.', 0);
     }
     setIsLoading(false);
   };
