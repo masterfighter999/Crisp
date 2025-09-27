@@ -110,10 +110,10 @@ export function Onboarding() {
                 resumeFile: fileDetails
               };
               
-              await updateCandidateInfo(activeCandidateId, updatedInfo);
-              
-              if (parsedData.name) form.setValue('name', parsedData.name);
-              if (parsedData.phone) form.setValue('phone', parsedData.phone);
+              // updateCandidateInfo is not strictly needed here anymore since onSubmit handles it,
+              // but we can pre-fill the form.
+              if (updatedInfo.name) form.setValue('name', updatedInfo.name);
+              if (updatedInfo.phone) form.setValue('phone', updatedInfo.phone);
               
               toast({
                 title: 'Resume Parsed',
