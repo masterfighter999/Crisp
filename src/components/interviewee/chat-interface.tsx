@@ -50,10 +50,10 @@ export function ChatInterface() {
 
 
   const sendNextQuestion = useCallback(async () => {
-    if (!candidate || !scheduleItem) return;
+    if (!candidate || !scheduleItem || isLoading) return;
 
-    // Do not send a question if one is already in flight or answered
-    if (isLoading || candidate.interview.questions.length > candidate.interview.answers.length) {
+    // Guard to prevent sending a question if one is already in flight or the logic is ahead.
+    if (candidate.interview.questions.length > candidate.interview.answers.length) {
       return;
     }
 
@@ -111,22 +111,16 @@ export function ChatInterface() {
 
 
   useEffect(() => {
-    // This effect ensures the interview starts if it's in progress but no questions have been asked.
-    if (candidate?.interview.status === 'IN_PROGRESS' && candidate.interview.questions.length === 0) {
+    // This is now the SINGLE source of truth for sending a question.
+    // It runs if the interview is in progress, not complete, and we need to send the next question.
+    if (
+      candidate?.interview.status === 'IN_PROGRESS' &&
+      candidate.interview.answers.length < INTERVIEW_SCHEDULE.length &&
+      candidate.interview.questions.length === candidate.interview.answers.length
+    ) {
       sendNextQuestion();
     }
-  }, [candidate?.id, candidate?.interview.status]);
-
-
-  useEffect(() => {
-     // This effect sends the next question after an answer has been submitted.
-    if (candidate?.interview.status === 'IN_PROGRESS') {
-      const { questions, answers } = candidate.interview;
-      if (questions.length > 0 && questions.length === answers.length && answers.length < INTERVIEW_SCHEDULE.length) {
-         sendNextQuestion();
-      }
-    }
-  }, [candidate?.interview.answers, candidate?.interview.status, sendNextQuestion]);
+  }, [candidate?.interview.answers.length, candidate?.interview.questions.length, candidate?.interview.status, sendNextQuestion]);
 
 
   useEffect(() => {
@@ -180,13 +174,13 @@ export function ChatInterface() {
         await completeInterview(candidate.id, 'Error generating summary.', 0);
     }
     setIsLoading(false);
-  }, [candidate, addAiChatMessage, completeInterview, getInterviewSummary, toast]);
+  }, [candidate, addAiChatMessage, completeInterview, toast]);
   
   useEffect(() => {
     if (candidate?.interview.status === 'IN_PROGRESS' && candidate.interview.answers.length === INTERVIEW_SCHEDULE.length && candidate.interview.questions.length === INTERVIEW_SCHEDULE.length) {
       finalizeInterview();
     }
-  }, [candidate?.interview.answers.length, candidate?.interview.status, finalizeInterview]);
+  }, [candidate?.interview.answers.length, candidate?.interview.status, finalizeInterview, candidate?.interview.questions.length]);
 
 
   const progressPercentage = scheduleItem ? (timeLeft / scheduleItem.duration) * 100 : 0;
@@ -230,7 +224,7 @@ export function ChatInterface() {
                     {candidate?.interview.chatHistory.map((message, index) => (
                         <ChatMessageItem key={index} message={message} />
                     ))}
-                    {isLoading && !currentQuestion && <LoadingSpinner />}
+                    {isLoading && <LoadingSpinner />}
                  </div>
             </ScrollArea>
         </div>
@@ -241,7 +235,7 @@ export function ChatInterface() {
                  <Button onClick={sendNextQuestion}>Retry</Button>
               </div>
             )}
-            {!isLoading && !questionError && currentQuestion && (
+            {!isLoading && !questionError && currentQuestion && !hasAnsweredCurrent && (
               <>
                 <div className="flex items-center gap-4 mb-2">
                     <p className="text-sm font-medium">Time remaining: {timeLeft}s</p>
@@ -305,6 +299,8 @@ function LoadingSpinner() {
         </div>
     )
 }
+
+    
 
     
 
