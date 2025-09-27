@@ -1,20 +1,35 @@
 'use client';
+import { useState } from 'react';
 import type { Candidate, ChatMessage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Mail, Phone, User, FileText, Bot } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, Mail, Phone, User, FileText, Bot, Trash2, Loader2 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
 
 interface CandidateDetailProps {
   candidate: Candidate;
   onBack: () => void;
+  onDelete: (id: string) => void;
 }
 
-export function CandidateDetail({ candidate, onBack }: CandidateDetailProps) {
+export function CandidateDetail({ candidate, onBack, onDelete }: CandidateDetailProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
     
   const getScoreBadgeVariant = (score: number | null) => {
     if (score === null) return 'secondary';
@@ -22,6 +37,12 @@ export function CandidateDetail({ candidate, onBack }: CandidateDetailProps) {
     if (score >= 60) return 'secondary';
     return 'destructive';
   }
+  
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    await onDelete(candidate.id);
+    // isDeleting will be false on component unmount
+  };
 
   return (
     <div className="space-y-6">
@@ -82,6 +103,37 @@ export function CandidateDetail({ candidate, onBack }: CandidateDetailProps) {
                 </div>
             </div>
         </CardContent>
+         <CardFooter className="flex justify-end border-t pt-6">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" disabled={isDeleting}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Candidate
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete all data for{' '}
+                  <span className="font-semibold">{candidate.name}</span> and remove their record from
+                  our servers.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Yes, delete candidate
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardFooter>
       </Card>
     </div>
   );

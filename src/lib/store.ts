@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Candidate, InterviewStatus, ChatMessage, InterviewQuestion } from './types';
 import { v4 as uuidv4 } from 'uuid';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { firestore } from './firebase';
 
 export const INTERVIEW_SCHEDULE: { difficulty: 'Easy' | 'Medium' | 'Hard'; duration: number }[] = [
@@ -23,6 +23,7 @@ interface InterviewState {
   fetchCandidate: (candidateId: string) => Promise<void>;
   createCandidate: (email: string) => Promise<string>;
   updateCandidateInfo: (id: string, info: { name: string; email: string; phone: string; resumeFile: Candidate['resumeFile'] }) => Promise<void>;
+  deleteCandidate: (id: string) => Promise<void>;
   setInterviewStatus: (candidateId: string, status: InterviewStatus) => Promise<void>;
   startInterview: (candidateId: string) => Promise<void>;
   addAiChatMessage: (candidateId: string, content: string) => Promise<void>;
@@ -122,6 +123,17 @@ export const useInterviewStore = create<InterviewState>()(
         }));
         if (updatedCandidate) {
             await updateFirestoreCandidate(updatedCandidate);
+        }
+      },
+      deleteCandidate: async (id: string) => {
+        set((state) => ({
+          candidates: state.candidates.filter((c) => c.id !== id),
+        }));
+        try {
+          const candidateRef = doc(firestore, 'candidates', id);
+          await deleteDoc(candidateRef);
+        } catch (error) {
+          console.error("Error deleting candidate from Firestore: ", error);
         }
       },
       setInterviewStatus: async (candidateId, status) => {

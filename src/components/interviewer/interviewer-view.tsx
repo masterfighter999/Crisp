@@ -6,10 +6,12 @@ import { CandidateDetail } from './candidate-detail';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Users } from 'lucide-react';
 import { AddCandidate } from './add-candidate';
+import { useToast } from '@/hooks/use-toast';
 
 export function InterviewerView() {
-  const { candidates } = useInterviewStore();
+  const { candidates, deleteCandidate } = useInterviewStore();
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const completedCandidates = candidates.filter(
     (c) => c.interview.status === 'COMPLETED'
@@ -18,6 +20,15 @@ export function InterviewerView() {
   const selectedCandidate = completedCandidates.find(
     (c) => c.id === selectedCandidateId
   );
+  
+  const handleDeleteCandidate = async (id: string) => {
+    await deleteCandidate(id);
+    setSelectedCandidateId(null);
+    toast({
+        title: "Candidate Deleted",
+        description: "The candidate's data has been removed.",
+    });
+  }
 
   return (
     <div className="mt-8 space-y-8">
@@ -38,6 +49,7 @@ export function InterviewerView() {
         <CandidateDetail
           candidate={selectedCandidate}
           onBack={() => setSelectedCandidateId(null)}
+          onDelete={handleDeleteCandidate}
         />
       ) : (
         <CandidateList
