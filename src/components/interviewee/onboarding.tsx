@@ -72,7 +72,7 @@ export function Onboarding() {
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      if (file.type === 'application/pdf') {
         if (!activeCandidateId) {
             toast({
                 variant: 'destructive',
@@ -121,7 +121,7 @@ export function Onboarding() {
         toast({
           variant: 'destructive',
           title: 'Invalid File Type',
-          description: 'Please upload a PDF or DOCX file.',
+          description: 'Please upload a PDF file.',
         });
       }
     }
@@ -129,6 +129,14 @@ export function Onboarding() {
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if(!activeCandidateId) return;
+    if(!resumeFile) {
+        toast({
+            variant: 'destructive',
+            title: 'Resume Required',
+            description: 'Please upload your resume to continue.',
+        });
+        return;
+    }
     updateCandidateInfo(activeCandidateId, { ...values, resumeFile });
   };
   
@@ -171,7 +179,7 @@ export function Onboarding() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div>
-              <FormLabel>Resume (PDF or DOCX)</FormLabel>
+              <FormLabel>Resume (PDF required)</FormLabel>
               <div
                 className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10 cursor-pointer hover:border-primary transition-colors data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50"
                 onClick={() => !isParsing && fileInputRef.current?.click()}
@@ -189,7 +197,7 @@ export function Onboarding() {
                       <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
                         <p className="pl-1">Click to upload or drag and drop</p>
                       </div>
-                      <p className="text-xs leading-5 text-muted-foreground">PDF, DOCX up to 10MB</p>
+                      <p className="text-xs leading-5 text-muted-foreground">PDF (10MB max)</p>
                     </>
                   )}
                 </div>
@@ -199,7 +207,7 @@ export function Onboarding() {
                 ref={fileInputRef}
                 onChange={handleFileChange}
                 className="hidden"
-                accept=".pdf,.docx"
+                accept=".pdf"
                 disabled={isParsing}
               />
               {resumeFile && !isParsing && (
