@@ -117,6 +117,7 @@ export function ChatInterface() {
         setTimeLeft((prev) => {
           if (prev <= 1) {
             if(timerRef.current) clearInterval(timerRef.current);
+            // This now just submits the answer, no direct state update in the callback
             handleAnswerSubmit();
             return 0;
           }
@@ -130,7 +131,7 @@ export function ChatInterface() {
         clearInterval(timerRef.current);
       }
     };
-  }, [currentQuestion, hasAnsweredCurrent, isLoading, candidate?.id]);
+  }, [currentQuestion, hasAnsweredCurrent, isLoading, candidate?.id, candidate?.interview.status]);
   
   const finalizeInterview = async () => {
     if (!candidate || candidate.interview.status === 'COMPLETED') return;
@@ -165,7 +166,7 @@ export function ChatInterface() {
     if (candidate?.interview.status === 'IN_PROGRESS' && candidate.interview.answers.length === INTERVIEW_SCHEDULE.length) {
       finalizeInterview();
     }
-  }, [candidate?.interview.answers.length]);
+  }, [candidate?.interview.answers.length, candidate?.interview.status]);
 
 
   const progressPercentage = scheduleItem ? (timeLeft / scheduleItem.duration) * 100 : 0;
