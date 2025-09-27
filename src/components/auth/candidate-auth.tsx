@@ -3,14 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import {
-  signInAnonymously,
-  signInWithPopup,
-  GoogleAuthProvider,
-} from 'firebase/auth';
+import { signInAnonymously } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, firestore } from '@/lib/firebase';
 import { useInterviewStore } from '@/lib/store';
@@ -35,6 +28,10 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, KeyRound, User } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import Link from 'next/link';
 
 const formSchema = z.object({
   token: z.string().min(1, { message: 'Please enter your interview token.' }),
@@ -44,7 +41,6 @@ export function CandidateAuth() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [isGuest, setIsGuest] = useState(false);
   const { setToken } = useInterviewStore();
   const { user } = useAuth();
 
@@ -57,7 +53,7 @@ export function CandidateAuth() {
     setIsLoading(true);
     try {
       await signInAnonymously(auth);
-      setIsGuest(true);
+      // The component will re-render with the token form
     } catch (error: any) {
        toast({
         variant: 'destructive',
@@ -102,22 +98,6 @@ export function CandidateAuth() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-      router.push('/candidate-dashboard');
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Google Sign-In Failed',
-        description: error.message,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   if (user && user.isAnonymous) {
       return (
@@ -163,7 +143,7 @@ export function CandidateAuth() {
         <User className="mx-auto h-12 w-12 text-primary" />
         <CardTitle className="mt-4">Candidate Access</CardTitle>
         <CardDescription>
-          Sign in as a guest to start an interview, or sign in with Google to view past results.
+          Sign in as a guest to start an interview, or log in to view past results.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -188,34 +168,18 @@ export function CandidateAuth() {
         <Button
           variant="outline"
           className="w-full"
-          onClick={handleGoogleSignIn}
+          onClick={() => router.push('/candidate-login')}
           disabled={isLoading}
         >
-          {isLoading ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <svg
-              className="mr-2 h-4 w-4"
-              aria-hidden="true"
-              focusable="false"
-              data-prefix="fab"
-              data-icon="google"
-              role="img"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 488 512"
-            >
-              <path
-                fill="currentColor"
-                d="M488 261.8C488 403.3 381.5 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 21.2 174 55.9L381.8 120.2C344.3 87.7 300.6 73 248 73c-94 0-170.8 76.7-170.8 171s76.7 171 170.8 171c98.2 0 150-71.2 155.1-106.3H248v-85.3h236.2c2.3 12.7 3.8 25.8 3.8 39.8z"
-              ></path>
-            </svg>
-          )}
-          Sign in with Google
+          Login to View Dashboard
         </Button>
       </CardContent>
-       <CardFooter>
+       <CardFooter className="flex-col gap-4">
          <p className="px-8 text-center text-xs text-muted-foreground">
-          Sign in with Google to view past interview results.
+          Log in to your account to see past interview results.
+        </p>
+         <p className="px-8 text-center text-xs text-muted-foreground">
+          New candidate? <Link href="/signup" className="underline text-primary">Create an account</Link>.
         </p>
        </CardFooter>
     </Card>

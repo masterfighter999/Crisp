@@ -44,6 +44,7 @@ export function Header() {
     return email.substring(0, 2).toUpperCase();
   };
 
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/candidate-login');
 
   return (
     <>
@@ -72,8 +73,8 @@ export function Header() {
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
                         <p className="text-sm font-medium leading-none flex items-center">
-                           {user.isAnonymous ? 'Candidate' : (user.email ? 'Interviewer' : 'Candidate')}
-                           {!user.isAnonymous && user.email && <ShieldCheck className="ml-2 size-4 text-primary" />}
+                           {user.isAnonymous ? 'Candidate (Guest)' : (user.email ? 'Interviewer/Candidate' : 'User')}
+                           {!user.isAnonymous && user.email?.endsWith('@interviewer.com') && <ShieldCheck className="ml-2 size-4 text-primary" />}
                         </p>
                         <p className="text-xs leading-none text-muted-foreground">
                           {user.email || 'guest'}
@@ -100,12 +101,12 @@ export function Header() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                 !pathname.startsWith('/login') && (
+                 !isAuthPage && (
                     <>
                       <Button variant="ghost" onClick={() => router.push('/login')}>
                         Interviewer Login
                       </Button>
-                      <Button onClick={() => setSignupModalOpen(true)}>Sign Up</Button>
+                      <Button onClick={() => setSignupModalOpen(true)}>Request Access</Button>
                     </>
                  )
               )}

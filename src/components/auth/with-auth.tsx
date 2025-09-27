@@ -24,14 +24,15 @@ const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) =>
       if (!user) {
         // If no user, redirect to appropriate login
         if(isInterviewerRoute) router.push('/login');
-        else router.push('/'); // Assumes homepage is candidate entry
+        else if(isCandidateDashboardRoute) router.push('/candidate-login');
+        else if(isCandidateInterviewRoute) router.push('/'); // Assumes homepage is guest/token entry
       } else {
         const isAnonymous = user.isAnonymous;
         // If user is anonymous, they should not access interviewer or candidate dashboards
         if(isAnonymous && (isInterviewerRoute || isCandidateDashboardRoute)) {
             router.push('/');
         }
-        // If user is not anonymous (i.e., signed in with Google), they should not access anonymous interview flow
+        // If user is not anonymous (i.e., signed in with email), they should not access anonymous interview flow
         if(!isAnonymous && isCandidateInterviewRoute) {
             router.push('/candidate-dashboard');
         }
