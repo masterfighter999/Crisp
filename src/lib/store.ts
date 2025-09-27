@@ -107,7 +107,7 @@ export const useInterviewStore = create<InterviewState>()(
           phone: '',
           resumeFile: null,
           interview: { ...initialInterviewRecord },
-          companyDomain,
+          companyDomain: companyDomain || null,
         };
         
         await updateFirestoreCandidate(newCandidate);

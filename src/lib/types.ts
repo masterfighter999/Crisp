@@ -45,7 +45,7 @@ export interface Candidate {
     size: number;
   } | null;
   interview: InterviewRecord;
-  companyDomain?: string; // Added to partition data by company
+  companyDomain?: string | null; // Added to partition data by company
 }
 
 export const GenerateInterviewQuestionInputSchema = z.object({
