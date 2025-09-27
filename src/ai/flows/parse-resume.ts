@@ -36,11 +36,21 @@ const parseResumePrompt = ai.definePrompt({
     name: 'parseResumePrompt',
     input: {schema: ParseResumeInputSchema},
     output: {schema: ParseResumeOutputSchema},
-    prompt: `You are an expert resume parser. Extract the candidate's name, email, and phone number from the following resume.
-    
+    prompt: `You are an expert resume parser. Your task is to extract the candidate's full name, email address, and phone number from the provided resume.
+
+    Analyze the following resume document carefully:
     Resume: {{media url=resumeDataUri}}
-    
-    If any of the fields are not found, leave them blank.`
+
+    Instructions:
+    1.  **Full Name**: Look for the most prominent name, usually at the top of the resume. It should be a person's full name.
+    2.  **Email Address**: Find a string that matches the standard email format (e.g., user@domain.com).
+    3.  **Phone Number**: Identify a sequence of numbers that represents a phone number. It may include parentheses, hyphens, or spaces.
+
+    Output format:
+    - Return a JSON object with the fields: \`name\`, \`email\`, and \`phone\`.
+    - If a specific piece of information (like a phone number or email) cannot be found in the resume, you MUST return the corresponding field as a null or empty string. Do not invent information.
+    - For example, if you only find the name and email, the output should be: \`{"name": "John Doe", "email": "john.doe@example.com", "phone": ""}\`.
+    - If you cannot find any of the required fields, return all fields as empty strings.`
 });
 
 
