@@ -29,12 +29,18 @@ async function fetchQuestionFromDb(difficulty: 'Easy' | 'Medium' | 'Hard'): Prom
     
     if (querySnapshot.empty) {
       console.warn(`No questions found in Firestore for difficulty: ${difficulty}`);
+      // Return null to indicate no questions were found.
       return null;
     }
     
     const questions = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     const randomIndex = Math.floor(Math.random() * questions.length);
     const randomQuestion = questions[randomIndex];
+
+    if (!randomQuestion || !randomQuestion.question || !randomQuestion.difficulty) {
+        console.error('Fetched document is malformed:', randomQuestion);
+        return null;
+    }
 
     return {
       type: 'text',
@@ -43,7 +49,8 @@ async function fetchQuestionFromDb(difficulty: 'Easy' | 'Medium' | 'Hard'): Prom
     };
   } catch (error) {
     console.error('Error fetching question from Firestore:', error);
-    throw new Error('Could not fetch question from the database.');
+    // Propagate a more specific error.
+    throw new Error('Could not fetch questions from the database. Please check Firestore permissions and collection name.');
   }
 }
 
@@ -51,25 +58,20 @@ export async function getInterviewQuestion(
   input: GenerateInterviewQuestionInput
 ): Promise<InterviewQuestion> {
   try {
-    // First, try to fetch a question from the database
     const dbQuestion = await fetchQuestionFromDb(input.difficulty);
+    
     if (dbQuestion) {
       return dbQuestion;
     }
 
-    // Fallback to generating a question if none are found in the DB
-    const questionText = await generateInterviewQuestion(input);
-    if (!questionText) {
-      throw new Error('AI returned an empty question.');
-    }
-    return {
-      type: 'text',
-      difficulty: input.difficulty,
-      question: questionText,
-    };
-  } catch (error) {
+    // If we are here, it means no questions were found for the given difficulty.
+    // Instead of falling back to AI, we now throw a clear error.
+    throw new Error(`No interview questions found in the database for '${input.difficulty}' difficulty.`);
+
+  } catch (error: any) {
     console.error('Error in getInterviewQuestion:', error);
-    throw new Error("Sorry, I could not get a question.");
+    // Rethrow the original error or a generic one to be caught by the UI.
+    throw new Error(error.message || "Sorry, I could not get a question.");
   }
 }
 
