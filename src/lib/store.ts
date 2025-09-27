@@ -11,7 +11,7 @@ export const INTERVIEW_SCHEDULE: { difficulty: 'Easy' | 'Medium' | 'Hard'; type:
   { difficulty: 'Easy', type: 'text', duration: 30 },
   { difficulty: 'Easy', type: 'text', duration: 30 },
   { difficulty: 'Medium', type: 'text', duration: 60 },
-  { difficulty: 'Medium', type: 'text', duration: 90 },
+  { difficulty: 'Medium', type: 'text', duration: 60 },
   { difficulty: 'Hard', type: 'text', duration: 120 },
   { difficulty: 'Hard', type: 'text', duration: 120 },
 ];
@@ -356,5 +356,3 @@ export const useInterviewStore = create<InterviewState>()(
     }
   )
 );
-
-    
