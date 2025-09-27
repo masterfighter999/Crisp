@@ -90,11 +90,10 @@ export function Onboarding() {
         reader.readAsDataURL(file);
 
         reader.onload = async () => {
-          // Reset the file input to allow re-uploading the same file
+           // Reset the file input to allow re-uploading the same file
           if (fileInputRef.current) {
               fileInputRef.current.value = '';
           }
-
           const resumeDataUri = reader.result as string;
           try {
             const parsedData = await parseResumeAction({ resumeDataUri });
@@ -140,6 +139,16 @@ export function Onboarding() {
       }
     }
   };
+
+  const handleRemoveFile = () => {
+    setResumeFile(null);
+    form.setValue('name', activeCandidate?.name || '');
+    form.setValue('phone', activeCandidate?.phone || '');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if(!activeCandidateId) return;
@@ -233,7 +242,7 @@ export function Onboarding() {
                       <p className="text-xs text-muted-foreground">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => setResumeFile(null)}>
+                  <Button variant="ghost" size="icon" onClick={handleRemoveFile}>
                     <X className="size-4" />
                   </Button>
                 </div>
