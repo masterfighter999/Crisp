@@ -88,13 +88,13 @@ export function Onboarding() {
         setIsParsing(true);
         const reader = new FileReader();
         reader.readAsDataURL(file);
-        
-        // Reset the file input to allow re-uploading the same file
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
 
         reader.onload = async () => {
+          // Reset the file input to allow re-uploading the same file
+          if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+          }
+
           const resumeDataUri = reader.result as string;
           try {
             const parsedData = await parseResumeAction({ resumeDataUri });
