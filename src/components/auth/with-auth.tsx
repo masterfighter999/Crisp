@@ -26,21 +26,35 @@ const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) =>
         if(isInterviewerRoute) router.push('/login');
         else if(isCandidateDashboardRoute) router.push('/candidate-login');
         else if(isCandidateInterviewRoute) router.push('/'); // Assumes homepage is guest/token entry
-      } else {
-        const isAnonymous = user.isAnonymous;
-        // If user is anonymous, they should not access interviewer or candidate dashboards
-        if(isAnonymous && (isInterviewerRoute || isCandidateDashboardRoute)) {
-            router.push('/');
-        }
-        // If user is not anonymous (i.e., signed in with email), they should not access anonymous interview flow
-        if(!isAnonymous && isCandidateInterviewRoute) {
-            router.push('/candidate-dashboard');
-        }
-        // If user is anonymous but has no token for the interview page
-        if(isAnonymous && isCandidateInterviewRoute && !activeToken) {
+        return;
+      }
+
+      // At this point, user is authenticated
+      const isAnonymous = user.isAnonymous;
+      const isInterviewer = user.email?.endsWith('@interviewer.com') ?? false;
+
+      // Rule 1: Protect interviewer dashboard
+      if (isInterviewerRoute && !isInterviewer) {
+        router.push('/'); // Or '/candidate-dashboard' if they are a logged-in candidate
+        return;
+      }
+
+      // Rule 2: Anonymous users can only access the interview page (with a token)
+      if (isAnonymous) {
+        if (isInterviewerRoute || isCandidateDashboardRoute) {
+          router.push('/');
+        } else if (isCandidateInterviewRoute && !activeToken) {
           router.push('/');
         }
+        return;
       }
+      
+      // Rule 3: Logged-in (non-anonymous) candidates cannot access the guest interview flow
+      if (!isAnonymous && isCandidateInterviewRoute) {
+        router.push('/candidate-dashboard');
+        return;
+      }
+
     }, [user, loading, router, pathname, activeToken]);
 
     if (loading || !user) {
