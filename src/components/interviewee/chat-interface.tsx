@@ -52,6 +52,11 @@ export function ChatInterface() {
   const sendNextQuestion = useCallback(async () => {
     if (!candidate || !scheduleItem) return;
 
+    // Do not send a question if one is already in flight or answered
+    if (isLoading || candidate.interview.questions.length > candidate.interview.answers.length) {
+      return;
+    }
+
     setIsLoading(true);
     setQuestionError(false);
 
@@ -91,36 +96,37 @@ export function ChatInterface() {
     } finally {
       setIsLoading(false);
     }
-  }, [candidate, scheduleItem, questionBank, addQuestion, addAiChatMessage, toast]);
+  }, [candidate, scheduleItem, questionBank, addQuestion, addAiChatMessage, toast, isLoading]);
   
   const handleAnswerSubmit = useCallback(async () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    if (!candidate || !currentQuestion || isLoading || questionError) return;
+    if (!candidate || !currentQuestion || isLoading || questionError || hasAnsweredCurrent) return;
 
     const answerToSubmit = userAnswer.trim() || "Time's up! No answer provided.";
     
     await addUserChatMessage(candidate.id, answerToSubmit);
     await submitAnswer(candidate.id, answerToSubmit);
 
-    // After submitting, check if we need to send the next question
-    const nextQuestionIndex = (candidate?.interview.currentQuestionIndex ?? 0) + 1;
-    if (nextQuestionIndex < INTERVIEW_SCHEDULE.length) {
-      sendNextQuestion();
-    }
-  }, [candidate, currentQuestion, isLoading, questionError, userAnswer, addUserChatMessage, submitAnswer, sendNextQuestion]);
+  }, [candidate, currentQuestion, isLoading, questionError, userAnswer, addUserChatMessage, submitAnswer, hasAnsweredCurrent]);
 
 
   useEffect(() => {
-    if (candidate?.interview.status === 'IN_PROGRESS') {
-      const answersCount = candidate.interview.answers.length;
-      const questionsCount = candidate.interview.questions.length;
+    // This effect ensures the interview starts if it's in progress but no questions have been asked.
+    if (candidate?.interview.status === 'IN_PROGRESS' && candidate.interview.questions.length === 0) {
+      sendNextQuestion();
+    }
+  }, [candidate?.id, candidate?.interview.status]);
 
-      // Only send a question if none have been sent, or if the number of questions matches the number of answers (meaning we are ready for the next one)
-      if (questionsCount === answersCount && questionsCount < INTERVIEW_SCHEDULE.length) {
-          sendNextQuestion();
+
+  useEffect(() => {
+     // This effect sends the next question after an answer has been submitted.
+    if (candidate?.interview.status === 'IN_PROGRESS') {
+      const { questions, answers } = candidate.interview;
+      if (questions.length > 0 && questions.length === answers.length && answers.length < INTERVIEW_SCHEDULE.length) {
+         sendNextQuestion();
       }
     }
-  }, [candidate?.id]); // Only run this on initial load or if the candidate changes
+  }, [candidate?.interview.answers, candidate?.interview.status, sendNextQuestion]);
 
 
   useEffect(() => {
@@ -147,7 +153,7 @@ export function ChatInterface() {
     };
   }, [currentQuestion, hasAnsweredCurrent, isLoading, candidate?.id, candidate?.interview.status, scheduleItem, handleAnswerSubmit]);
   
-  const finalizeInterview = async () => {
+  const finalizeInterview = useCallback(async () => {
     if (!candidate || candidate.interview.status === 'COMPLETED') return;
     
     setIsLoading(true);
@@ -174,13 +180,13 @@ export function ChatInterface() {
         await completeInterview(candidate.id, 'Error generating summary.', 0);
     }
     setIsLoading(false);
-  };
+  }, [candidate, addAiChatMessage, completeInterview, getInterviewSummary, toast]);
   
   useEffect(() => {
     if (candidate?.interview.status === 'IN_PROGRESS' && candidate.interview.answers.length === INTERVIEW_SCHEDULE.length && candidate.interview.questions.length === INTERVIEW_SCHEDULE.length) {
       finalizeInterview();
     }
-  }, [candidate?.interview.answers.length, candidate?.interview.status]);
+  }, [candidate?.interview.answers.length, candidate?.interview.status, finalizeInterview]);
 
 
   const progressPercentage = scheduleItem ? (timeLeft / scheduleItem.duration) * 100 : 0;
@@ -224,7 +230,7 @@ export function ChatInterface() {
                     {candidate?.interview.chatHistory.map((message, index) => (
                         <ChatMessageItem key={index} message={message} />
                     ))}
-                    {isLoading && <LoadingSpinner />}
+                    {isLoading && !currentQuestion && <LoadingSpinner />}
                  </div>
             </ScrollArea>
         </div>
@@ -250,7 +256,7 @@ export function ChatInterface() {
                         disabled={hasAnsweredCurrent}
                     />
 
-                    <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={hasAnsweredCurrent} onClick={() => handleAnswerSubmit()}>
+                    <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={hasAnsweredCurrent}>
                         <Send className="size-4" />
                     </Button>
                 </form>
@@ -299,5 +305,7 @@ function LoadingSpinner() {
         </div>
     )
 }
+
+    
 
     
