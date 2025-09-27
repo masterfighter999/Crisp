@@ -2,7 +2,8 @@
 
 /**
  * @fileOverview This file defines a Genkit flow for dynamically generating interview questions
- * based on specified difficulty levels and full-stack topics.
+ * based on specified difficulty levels and full-stack topics. This serves as a fallback
+ * if no questions are found in the Firestore database.
  *
  * - generateInterviewQuestion - A function that generates an interview question.
  * - GenerateInterviewQuestionInput - The input type for the generateInterviewQuestion function.
