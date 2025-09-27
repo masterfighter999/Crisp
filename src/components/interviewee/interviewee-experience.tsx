@@ -57,10 +57,18 @@ export function IntervieweeExperience() {
   }, [user]);
 
   useEffect(() => {
-    if (activeCandidate?.interview.status === 'IN_PROGRESS') {
-      setShowWelcomeModal(true);
+    if (activeCandidate?.interview.status === 'IN_PROGRESS' && activeCandidate.interview.startTime) {
+      // Only show welcome back modal if interview is in progress and has a start time.
+      const lastSessionTime = activeCandidate.interview.startTime;
+      const oneHour = 60 * 60 * 1000;
+      if(Date.now() - lastSessionTime < oneHour) { // Only show if it's been less than an hour
+         setShowWelcomeModal(true);
+      } else {
+          // If it's been too long, just start them over.
+          handleStartOver();
+      }
     }
-  }, [activeCandidate?.id, activeCandidate?.interview.status]);
+  }, [activeCandidate?.id]);
   
   const handleStartOver = () => {
     if (activeCandidateId) {

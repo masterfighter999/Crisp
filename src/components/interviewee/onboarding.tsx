@@ -3,14 +3,14 @@ import { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useInterviewStore } from '@/lib/store';
+import { useInterviewStore, INTERVIEW_SCHEDULE } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { UploadCloud, File, X, PartyPopper, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { parseResumeAction } from '@/app/actions';
+import { parseResumeAction, getAllInterviewQuestions } from '@/app/actions';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { useAuth } from '@/context/auth-context';
@@ -26,6 +26,7 @@ export function Onboarding() {
   const { createCandidate, getActiveCandidate, updateCandidateInfo, startInterview, activeCandidateId, activeToken } = useInterviewStore();
   const [resumeFile, setResumeFile] = useState<{ name: string; size: number } | null>(null);
   const [isParsing, setIsParsing] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -54,8 +55,15 @@ export function Onboarding() {
           const email = tokenDoc.email;
           const companyDomain = tokenDoc.companyDomain;
           // Pass companyDomain when creating candidate
-          await createCandidate(email, companyDomain);
-          form.setValue('email', email);
+          const newCandidateId = await createCandidate(email, companyDomain);
+          const newCandidate = useInterviewStore.getState().candidates.find(c => c.id === newCandidateId);
+          if (newCandidate) {
+            form.reset({
+              name: newCandidate.name,
+              email: newCandidate.email,
+              phone: newCandidate.phone,
+            });
+          }
         }
       } else if (activeCandidate) {
         form.reset({
@@ -63,86 +71,90 @@ export function Onboarding() {
           email: activeCandidate.email,
           phone: activeCandidate.phone
         });
+        if (activeCandidate.resumeFile) {
+            setResumeFile(activeCandidate.resumeFile);
+        }
       }
     };
     initializeCandidate();
-  }, [activeToken, activeCandidateId, user]);
+  }, [activeToken, activeCandidateId, user, createCandidate, form]);
 
 
-  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+ const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.type === 'application/pdf') {
-        if (!activeCandidateId) {
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Cannot upload resume without an active session. Please re-validate your token.'
-            });
-            return;
-        }
-        
-        const fileDetails = { name: file.name, size: file.size };
-        setResumeFile(fileDetails);
-
-        setIsParsing(true);
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-
-        reader.onload = async () => {
-          if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-          }
-          const resumeDataUri = reader.result as string;
-          try {
-            const parsedData = await parseResumeAction({ resumeDataUri });
-            
-            if (parsedData) {
-              const tokenEmail = form.getValues('email');
-              if (parsedData.email && parsedData.email.toLowerCase() !== tokenEmail.toLowerCase()) {
-                  toast({
-                      title: 'Email Mismatch',
-                      description: `The email on your resume (${parsedData.email}) doesn't match the invited email (${tokenEmail}). This is just a warning.`,
-                      variant: 'default'
-                  });
-              }
-
-              // Use parsed data only if it exists, otherwise keep existing form value
-              const newName = parsedData.name || form.getValues('name');
-              const newPhone = parsedData.phone || form.getValues('phone');
-              
-              if (newName) form.setValue('name', newName);
-              if (newPhone) form.setValue('phone', newPhone);
-              
-              toast({
-                title: 'Resume Parsed Successfully',
-                description: `Name: ${newName || 'Not found'}\nPhone: ${newPhone || 'Not found'}`,
-              });
-            }
-          } catch (error) {
-             toast({
-              variant: 'destructive',
-              title: 'Parsing Failed',
-              description: 'We could not parse your resume. Please fill in the details manually.',
-            });
-          } finally {
-            setIsParsing(false);
-          }
-        };
-      } else {
+      if (file.type !== 'application/pdf') {
         toast({
           variant: 'destructive',
           title: 'Invalid File Type',
           description: 'Please upload a PDF file.',
         });
+        return;
       }
+      
+      if (!activeCandidateId) {
+          toast({
+              variant: 'destructive',
+              title: 'Error',
+              description: 'Cannot upload resume without an active session. Please re-validate your token.'
+          });
+          return;
+      }
+      
+      const fileDetails = { name: file.name, size: file.size };
+      setResumeFile(fileDetails);
+      setIsParsing(true);
+      
+      const reader = new FileReader();
+      reader.onload = async () => {
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        
+        const resumeDataUri = reader.result as string;
+        try {
+          const parsedData = await parseResumeAction({ resumeDataUri });
+          
+          if (parsedData) {
+            const tokenEmail = form.getValues('email');
+            
+            if (parsedData.email && parsedData.email.toLowerCase() !== tokenEmail.toLowerCase()) {
+                toast({
+                    title: 'Email Mismatch Warning',
+                    description: `The email on your resume (${parsedData.email}) doesn't match the one for this interview (${tokenEmail}).`,
+                    duration: 5000,
+                });
+            }
+
+            const newName = parsedData.name || form.getValues('name');
+            const newPhone = parsedData.phone || form.getValues('phone');
+            
+            if (newName) form.setValue('name', newName, { shouldValidate: true });
+            if (newPhone) form.setValue('phone', newPhone, { shouldValidate: true });
+            
+            toast({
+              title: 'Resume Parsed',
+              description: `Name: ${newName || 'Not found'}\nPhone: ${newPhone || 'Not found'}`,
+            });
+          }
+        } catch (error) {
+           toast({
+            variant: 'destructive',
+            title: 'Parsing Failed',
+            description: 'We could not parse your resume. Please fill in the details manually.',
+          });
+        } finally {
+          setIsParsing(false);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const handleRemoveFile = () => {
     setResumeFile(null);
-    form.setValue('name', activeCandidate?.name || '');
-    form.setValue('phone', activeCandidate?.phone || '');
+    form.setValue('name', '', { shouldValidate: true });
+    form.setValue('phone', '', { shouldValidate: true });
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -162,9 +174,32 @@ export function Onboarding() {
     updateCandidateInfo(activeCandidateId, { ...values, resumeFile });
   };
   
-  const handleStartInterview = () => {
-    if(activeCandidate) {
-      startInterview(activeCandidate.id);
+  const handleStartInterview = async () => {
+    if(!activeCandidate) return;
+    setIsStarting(true);
+    try {
+        const result = await getAllInterviewQuestions({
+            topic: 'full stack',
+            schedule: INTERVIEW_SCHEDULE,
+        });
+
+        if (result.questions && result.questions.length === INTERVIEW_SCHEDULE.length) {
+            await startInterview(activeCandidate.id, result.questions);
+        } else {
+             toast({
+                variant: 'destructive',
+                title: 'Failed to Start Interview',
+                description: 'Could not generate the interview questions. Please try again.',
+            });
+        }
+    } catch (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'An unexpected error occurred while starting the interview.',
+        });
+    } finally {
+        setIsStarting(false);
     }
   }
 
@@ -181,7 +216,8 @@ export function Onboarding() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button size="lg" onClick={handleStartInterview}>
+          <Button size="lg" onClick={handleStartInterview} disabled={isStarting}>
+            {isStarting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Start Interview
           </Button>
         </CardContent>

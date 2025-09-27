@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useInterviewStore, INTERVIEW_SCHEDULE } from '@/lib/store';
-import { getInterviewQuestion, getInterviewSummary } from '@/app/actions';
+import { getInterviewSummary } from '@/app/actions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,7 +16,6 @@ import type { ChatMessage } from '@/lib/types';
 export function ChatInterface() {
   const {
     getActiveCandidate,
-    addQuestion,
     submitAnswer,
     addAiChatMessage,
     addUserChatMessage,
@@ -43,25 +42,30 @@ export function ChatInterface() {
     }
   }, [candidate?.interview.chatHistory]);
 
-  const fetchNextQuestion = async (index: number) => {
-    if (index >= INTERVIEW_SCHEDULE.length) {
-      finalizeInterview();
-      return;
-    }
-    setIsLoading(true);
-    const schedule = INTERVIEW_SCHEDULE[index];
-    const { question } = await getInterviewQuestion({ difficulty: schedule.difficulty, topic: 'full stack' });
-    if (candidate) {
-      await addQuestion(candidate.id, { question, difficulty: schedule.difficulty });
-      await addAiChatMessage(candidate.id, question);
-    }
-    setIsLoading(false);
+
+  const sendNextQuestion = async () => {
+      if (!candidate) return;
+      
+      const questionIndex = candidate.interview.currentQuestionIndex;
+      const questions = candidate.interview.questions;
+
+      if (questionIndex >= questions.length) {
+          finalizeInterview();
+          return;
+      }
+      
+      const nextQuestion = questions[questionIndex];
+      if (nextQuestion) {
+          setIsLoading(true);
+          await addAiChatMessage(candidate.id, nextQuestion.question);
+          setIsLoading(false);
+      }
   };
   
   const handleAnswerSubmit = async () => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (candidate) {
-      const answerToSubmit = userAnswer || "Time's up! No answer provided.";
+      const answerToSubmit = userAnswer.trim() || "Time's up! No answer provided.";
       await addUserChatMessage(candidate.id, answerToSubmit);
       await submitAnswer(candidate.id, answerToSubmit);
       setUserAnswer('');
@@ -69,22 +73,29 @@ export function ChatInterface() {
   };
 
   useEffect(() => {
+    // This effect now simply sends the next question from the pre-loaded list.
     if (candidate?.interview.status === 'IN_PROGRESS') {
-      if (currentQuestionIndex === candidate.interview.questions.length) {
-        fetchNextQuestion(currentQuestionIndex);
+      const hasAnsweredCurrent = candidate.interview.answers.length > currentQuestionIndex;
+      if (!hasAnsweredCurrent) {
+          // If the current question hasn't been sent to chat yet, send it.
+          const currentQuestionInChat = candidate.interview.chatHistory.some(m => m.content === currentQuestion?.question);
+          if (currentQuestion && !currentQuestionInChat) {
+              sendNextQuestion();
+          }
       }
     }
-  }, [candidate?.id, currentQuestionIndex]);
+  }, [candidate?.id, currentQuestionIndex, candidate?.interview.answers.length]);
+
 
   useEffect(() => {
-    if (currentQuestion && scheduleItem) {
+    if (currentQuestion && scheduleItem && !isLoading) {
       const duration = scheduleItem.duration;
       setTimeLeft(duration);
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
             if(timerRef.current) clearInterval(timerRef.current);
-            handleAnswerSubmit();
+            handleAnswerSubmit(); // This will also trigger the next question via state change
             return 0;
           }
           return prev - 1;
@@ -94,10 +105,10 @@ export function ChatInterface() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [currentQuestion]);
+  }, [currentQuestion, isLoading]);
   
   const finalizeInterview = async () => {
-    if (!candidate) return;
+    if (!candidate || candidate.interview.status === 'COMPLETED') return;
     setIsLoading(true);
     await addAiChatMessage(candidate.id, 'Thank you for completing the interview. I am now generating your performance summary...');
     
@@ -118,8 +129,28 @@ export function ChatInterface() {
     }
     setIsLoading(false);
   };
-
+  
   const progressPercentage = scheduleItem ? (timeLeft / scheduleItem.duration) * 100 : 0;
+  
+  if (!candidate || !scheduleItem) {
+     if (candidate && candidate.interview.status === 'IN_PROGRESS' && currentQuestionIndex >= INTERVIEW_SCHEDULE.length) {
+       // This handles the case where the interview is finished but summary is being generated.
+        return (
+             <Card className="w-full max-w-3xl mx-auto mt-8">
+                <CardHeader className="text-center">
+                    <CardTitle>Finalizing...</CardTitle>
+                </CardHeader>
+                <CardContent className="flex justify-center items-center h-96">
+                    <div className="flex items-center space-x-2">
+                        <Loader2 className="size-8 animate-spin text-primary" />
+                        <p className="text-muted-foreground">Please wait while we generate your results.</p>
+                    </div>
+                </CardContent>
+            </Card>
+        );
+     }
+      return null;
+  }
 
   return (
     <Card className="w-full max-w-3xl mx-auto mt-8">
@@ -155,9 +186,9 @@ export function ChatInterface() {
                     value={userAnswer}
                     onChange={(e) => setUserAnswer(e.target.value)}
                     className="pr-20 min-h-[80px]"
-                    disabled={isLoading}
+                    disabled={isLoading || currentQuestionIndex >= INTERVIEW_SCHEDULE.length}
                 />
-                <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={isLoading}>
+                <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={isLoading || currentQuestionIndex >= INTERVIEW_SCHEDULE.length}>
                     <Send className="size-4" />
                 </Button>
             </form>

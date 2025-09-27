@@ -25,7 +25,7 @@ interface InterviewState {
   updateCandidateInfo: (id: string, info: { name: string; email: string; phone: string; resumeFile: Candidate['resumeFile'] }) => Promise<void>;
   deleteCandidate: (id: string) => Promise<void>;
   setInterviewStatus: (candidateId: string, status: InterviewStatus) => Promise<void>;
-  startInterview: (candidateId: string) => Promise<void>;
+  startInterview: (candidateId: string, questions: InterviewQuestion[]) => Promise<void>;
   addAiChatMessage: (candidateId: string, content: string) => Promise<void>;
   addUserChatMessage: (candidateId: string, content: string) => Promise<void>;
   addQuestion: (candidateId: string, question: InterviewQuestion) => Promise<void>;
@@ -148,7 +148,7 @@ export const useInterviewStore = create<InterviewState>()(
             await updateFirestoreCandidate(updatedCandidate);
         }
       },
-      startInterview: async (candidateId) => {
+      startInterview: async (candidateId, questions) => {
         let updatedCandidate: Candidate | undefined;
         set((state) => ({
           candidates: state.candidates.map((c) => {
@@ -159,6 +159,7 @@ export const useInterviewStore = create<InterviewState>()(
                     ...c.interview,
                     status: 'IN_PROGRESS',
                     startTime: Date.now(),
+                    questions: questions,
                   },
                 };
                 return updatedCandidate;
@@ -299,9 +300,16 @@ export const useInterviewStore = create<InterviewState>()(
         set((state) => ({
           candidates: state.candidates.map((c) => {
              if (c.id === candidateId) {
+                const email = c.email;
+                const companyDomain = c.companyDomain;
                 updatedCandidate = {
                   ...c,
-                  interview: { ...initialInterviewRecord },
+                  name: '',
+                  phone: '',
+                  resumeFile: null,
+                  interview: { ...initialInterviewRecord, status: 'COLLECTING_INFO' },
+                  email, // preserve email and companyDomain
+                  companyDomain,
                 };
                 return updatedCandidate;
              }

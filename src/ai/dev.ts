@@ -5,3 +5,4 @@ import '@/ai/flows/generate-interview-questions.ts';
 import '@/ai/flows/summarize-candidate-performance.ts';
 import '@/ai/flows/prompt-for-missing-information.ts';
 import '@/ai/flows/parse-resume.ts';
+import '@/ai/flows/generate-all-interview-questions.ts';
