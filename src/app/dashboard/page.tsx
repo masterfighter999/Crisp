@@ -1,16 +1,21 @@
+// src/app/dashboard/page.tsx
+'use client';
 import { Header } from '@/components/header';
-import { IntervieweeExperience } from '@/components/interviewee/interviewee-experience';
+import { InterviewerView } from '@/components/interviewer/interviewer-view';
 import { ClientOnly } from '@/components/client-only';
+import withAuth from '@/components/auth/with-auth';
 
-export default function Home() {
+function DashboardPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
       <main className="flex-grow container mx-auto px-4 py-8">
         <ClientOnly>
-          <IntervieweeExperience />
+          <InterviewerView />
         </ClientOnly>
       </main>
     </div>
   );
 }
+
+export default withAuth(DashboardPage);

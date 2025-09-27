@@ -5,6 +5,7 @@ import { CandidateList } from './candidate-list';
 import { CandidateDetail } from './candidate-detail';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Users } from 'lucide-react';
+import { AddCandidate } from './add-candidate';
 
 export function InterviewerView() {
   const { candidates } = useInterviewStore();
@@ -18,9 +19,11 @@ export function InterviewerView() {
     (c) => c.id === selectedCandidateId
   );
 
-  if (completedCandidates.length === 0) {
-      return (
-        <Card className="w-full max-w-2xl mx-auto mt-8 text-center border-dashed">
+  return (
+    <div className="mt-8 space-y-8">
+      <AddCandidate />
+      {completedCandidates.length === 0 ? (
+        <Card className="w-full text-center border-dashed">
             <CardHeader>
                 <div className="mx-auto bg-muted p-3 rounded-full mb-4">
                     <Users className="size-10 text-muted-foreground" />
@@ -31,12 +34,7 @@ export function InterviewerView() {
                 </CardDescription>
             </CardHeader>
         </Card>
-      );
-  }
-
-  return (
-    <div className="mt-8">
-      {selectedCandidate ? (
+      ) : selectedCandidate ? (
         <CandidateDetail
           candidate={selectedCandidate}
           onBack={() => setSelectedCandidateId(null)}
