@@ -26,6 +26,7 @@ export function ChatInterface() {
   } = useInterviewStore();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
   const [timeLeft, setTimeLeft] = useState(0);
   const [questionError, setQuestionError] = useState(false);
@@ -84,6 +85,7 @@ export function ChatInterface() {
       await addQuestion(candidate.id, newQuestion);
       await addAiChatMessage(candidate.id, newQuestion.questionText);
       setUserAnswer('');
+      setIsSubmitting(false); // Release the lock after new question is sent
 
     } catch (error: any) {
       console.error(error);
@@ -93,6 +95,7 @@ export function ChatInterface() {
         title: 'Failed to get question.',
         description: "There was an issue loading the next question. Please click 'Retry' to try again.",
       });
+      setIsSubmitting(false); // Also release lock on error
     } finally {
       setIsLoading(false);
       isFetchingQuestionRef.current = false;
@@ -101,14 +104,15 @@ export function ChatInterface() {
   
   const handleAnswerSubmit = useCallback(async () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    if (!candidate || !currentQuestion || isLoading || questionError || hasAnsweredCurrent) return;
+    if (!candidate || !currentQuestion || isLoading || questionError || hasAnsweredCurrent || isSubmitting) return;
 
+    setIsSubmitting(true);
     const answerToSubmit = userAnswer.trim() || "Time's up! No answer provided.";
     
     await addUserChatMessage(candidate.id, answerToSubmit);
     await submitAnswer(candidate.id, answerToSubmit);
 
-  }, [candidate, currentQuestion, isLoading, questionError, userAnswer, addUserChatMessage, submitAnswer, hasAnsweredCurrent]);
+  }, [candidate, currentQuestion, isLoading, questionError, userAnswer, addUserChatMessage, submitAnswer, hasAnsweredCurrent, isSubmitting]);
 
 
   useEffect(() => {
@@ -249,11 +253,11 @@ export function ChatInterface() {
                     value={userAnswer}
                     onChange={(e) => setUserAnswer(e.target.value)}
                     className="pr-20 min-h-[80px]"
-                    disabled={hasAnsweredCurrent}
+                    disabled={hasAnsweredCurrent || isSubmitting}
                 />
 
-                <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={hasAnsweredCurrent}>
-                    <Send className="size-4" />
+                <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={hasAnsweredCurrent || isSubmitting}>
+                    {isSubmitting ? <Loader2 className="size-4 animate-spin"/> : <Send className="size-4" />}
                 </Button>
             </form>
           </>
