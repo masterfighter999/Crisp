@@ -116,7 +116,7 @@ export function ChatInterface() {
     await addUserChatMessage(candidate.id, answerToSubmit);
     await submitAnswer(candidate.id, answerToSubmit);
 
-  }, [candidate, currentQuestion, isLoading, questionError, userAnswer, addUserChatMessage, submitAnswer]);
+  }, [candidate, currentQuestion, isLoading, questionError, addUserChatMessage, submitAnswer]);
 
 
   useEffect(() => {
@@ -217,6 +217,11 @@ export function ChatInterface() {
       );
   }
 
+  const handleFormSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    handleAnswerSubmit();
+  }
+
   return (
     <Card className="w-full max-w-3xl mx-auto h-[80vh] flex flex-col">
       <CardHeader className="text-center flex-shrink-0">
@@ -251,7 +256,7 @@ export function ChatInterface() {
                 <p className="text-sm font-medium whitespace-nowrap">Time remaining: {timeLeft}s</p>
                 <Progress value={progressPercentage} className="w-full [&>div]:bg-accent" />
             </div>
-            <form onSubmit={(e: FormEvent) => {e.preventDefault(); handleAnswerSubmit()}} className="relative w-full">
+            <form onSubmit={handleFormSubmit} className="relative w-full">
                 <Textarea 
                     placeholder="Type your answer here..."
                     value={userAnswer}
@@ -308,3 +313,5 @@ function LoadingSpinner() {
         </div>
     )
 }
+
+    
