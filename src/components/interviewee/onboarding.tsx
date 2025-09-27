@@ -93,44 +93,44 @@ export function Onboarding() {
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          <div>
-            <FormLabel>Resume (PDF or DOCX)</FormLabel>
-            <div
-              className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10 cursor-pointer hover:border-primary transition-colors"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <div className="text-center">
-                <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
-                <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
-                  <p className="pl-1">Click to upload or drag and drop</p>
-                </div>
-                <p className="text-xs leading-5 text-muted-foreground">PDF, DOCX up to 10MB</p>
-              </div>
-            </div>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              className="hidden"
-              accept=".pdf,.docx"
-            />
-            {resumeFile && (
-              <div className="mt-4 flex items-center justify-between bg-muted/50 p-3 rounded-md">
-                <div className="flex items-center gap-3">
-                  <File className="size-6 text-primary" />
-                  <div>
-                    <p className="text-sm font-medium">{resumeFile.name}</p>
-                    <p className="text-xs text-muted-foreground">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                  </div>
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => setResumeFile(null)}>
-                  <X className="size-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-
           <Form {...form}>
+            <div>
+              <FormLabel>Resume (PDF or DOCX)</FormLabel>
+              <div
+                className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10 cursor-pointer hover:border-primary transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <div className="text-center">
+                  <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
+                  <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
+                    <p className="pl-1">Click to upload or drag and drop</p>
+                  </div>
+                  <p className="text-xs leading-5 text-muted-foreground">PDF, DOCX up to 10MB</p>
+                </div>
+              </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                accept=".pdf,.docx"
+              />
+              {resumeFile && (
+                <div className="mt-4 flex items-center justify-between bg-muted/50 p-3 rounded-md">
+                  <div className="flex items-center gap-3">
+                    <File className="size-6 text-primary" />
+                    <div>
+                      <p className="text-sm font-medium">{resumeFile.name}</p>
+                      <p className="text-xs text-muted-foreground">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => setResumeFile(null)}>
+                    <X className="size-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
