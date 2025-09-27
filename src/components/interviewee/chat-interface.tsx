@@ -49,7 +49,7 @@ export function ChatInterface() {
   }, [candidate?.interview.chatHistory]);
 
 
-  const sendNextQuestion = async () => {
+  const sendNextQuestion = useCallback(async () => {
     if (!candidate || !scheduleItem) return;
 
     setIsLoading(true);
@@ -57,13 +57,12 @@ export function ChatInterface() {
 
     try {
       let newQuestion: InterviewQuestion | null = null;
-      const availableQuestions = questionBank.filter(q => q.difficulty === scheduleItem.difficulty);
+      const availableQuestions = questionBank.filter(q => q.difficulty === scheduleItem.difficulty && !candidate.interview.questions.some(asked => asked.questionText === q.questionText));
 
       if (availableQuestions.length > 0) {
         const randomIndex = Math.floor(Math.random() * availableQuestions.length);
         newQuestion = availableQuestions[randomIndex];
       } else {
-        // Fallback to AI generation
         console.warn(`No questions found in local question bank for difficulty: ${scheduleItem.difficulty}. Falling back to AI generation.`);
         const questionText = await generateQuestionAction({ difficulty: scheduleItem.difficulty, topic: 'full stack' });
         newQuestion = {
@@ -92,7 +91,7 @@ export function ChatInterface() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [candidate, scheduleItem, questionBank, addQuestion, addAiChatMessage, toast]);
   
   const handleAnswerSubmit = useCallback(async () => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -102,7 +101,13 @@ export function ChatInterface() {
     
     await addUserChatMessage(candidate.id, answerToSubmit);
     await submitAnswer(candidate.id, answerToSubmit);
-  }, [candidate, currentQuestion, isLoading, questionError, userAnswer, addUserChatMessage, submitAnswer]);
+
+    // After submitting, check if we need to send the next question
+    const nextQuestionIndex = (candidate?.interview.currentQuestionIndex ?? 0) + 1;
+    if (nextQuestionIndex < INTERVIEW_SCHEDULE.length) {
+      sendNextQuestion();
+    }
+  }, [candidate, currentQuestion, isLoading, questionError, userAnswer, addUserChatMessage, submitAnswer, sendNextQuestion]);
 
 
   useEffect(() => {
@@ -110,13 +115,12 @@ export function ChatInterface() {
       const answersCount = candidate.interview.answers.length;
       const questionsCount = candidate.interview.questions.length;
 
-      if (answersCount === questionsCount && questionsCount < INTERVIEW_SCHEDULE.length) {
+      // Only send a question if none have been sent, or if the number of questions matches the number of answers (meaning we are ready for the next one)
+      if (questionsCount === answersCount && questionsCount < INTERVIEW_SCHEDULE.length) {
           sendNextQuestion();
-      } else if (questionsCount === 0 && answersCount === 0) {
-        sendNextQuestion();
       }
     }
-  }, [candidate?.id, candidate?.interview.answers.length]);
+  }, [candidate?.id]); // Only run this on initial load or if the candidate changes
 
 
   useEffect(() => {
@@ -173,7 +177,7 @@ export function ChatInterface() {
   };
   
   useEffect(() => {
-    if (candidate?.interview.status === 'IN_PROGRESS' && candidate.interview.answers.length === INTERVIEW_SCHEDULE.length) {
+    if (candidate?.interview.status === 'IN_PROGRESS' && candidate.interview.answers.length === INTERVIEW_SCHEDULE.length && candidate.interview.questions.length === INTERVIEW_SCHEDULE.length) {
       finalizeInterview();
     }
   }, [candidate?.interview.answers.length, candidate?.interview.status]);
@@ -181,7 +185,7 @@ export function ChatInterface() {
 
   const progressPercentage = scheduleItem ? (timeLeft / scheduleItem.duration) * 100 : 0;
   
-  if (!candidate || (candidate.interview.status === 'IN_PROGRESS' && candidate.interview.answers.length === INTERVIEW_SCHEDULE.length)) {
+  if (!candidate || (candidate.interview.status === 'IN_PROGRESS' && candidate.interview.answers.length === INTERVIEW_SCHEDULE.length && !isLoading)) {
       return (
           <Card className="w-full max-w-3xl mx-auto mt-8">
             <CardHeader className="text-center">
@@ -210,7 +214,7 @@ export function ChatInterface() {
             <p className="text-sm text-muted-foreground mb-2">
                 Question {currentQuestionIndex + 1} of {INTERVIEW_SCHEDULE.length} ({scheduleItem?.difficulty})
             </p>
-            <Progress value={(currentQuestionIndex / INTERVIEW_SCHEDULE.length) * 100} />
+            <Progress value={((currentQuestionIndex) / INTERVIEW_SCHEDULE.length) * 100} />
         </div>
       </CardHeader>
       <CardContent>
@@ -295,3 +299,5 @@ function LoadingSpinner() {
         </div>
     )
 }
+
+    
