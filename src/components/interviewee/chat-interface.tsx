@@ -2,7 +2,7 @@
 'use client';
 import { useState, useEffect, useRef, FormEvent, useCallback } from 'react';
 import { useInterviewStore, INTERVIEW_SCHEDULE } from '@/lib/store';
-import { getInterviewSummary } from '@/app/actions';
+import { getInterviewSummary, generateQuestionAction } from '@/app/actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -56,28 +56,38 @@ export function ChatInterface() {
     setQuestionError(false);
 
     try {
+      let newQuestion: InterviewQuestion | null = null;
       const availableQuestions = questionBank.filter(q => q.difficulty === scheduleItem.difficulty);
-      if (availableQuestions.length === 0) {
-        throw new Error(`No questions found in question bank for difficulty: ${scheduleItem.difficulty}`);
+
+      if (availableQuestions.length > 0) {
+        const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+        newQuestion = availableQuestions[randomIndex];
+      } else {
+        // Fallback to AI generation
+        console.warn(`No questions found in local question bank for difficulty: ${scheduleItem.difficulty}. Falling back to AI generation.`);
+        const questionText = await generateQuestionAction({ difficulty: scheduleItem.difficulty, topic: 'full stack' });
+        newQuestion = {
+            question: questionText,
+            difficulty: scheduleItem.difficulty,
+            type: 'text'
+        };
       }
-      
-      const randomIndex = Math.floor(Math.random() * availableQuestions.length);
-      const newQuestion = availableQuestions[randomIndex];
 
       if (!newQuestion) {
-        throw new Error('Failed to select a question from the local bank.');
+        throw new Error('Failed to select or generate a question.');
       }
 
       await addQuestion(candidate.id, newQuestion);
       await addAiChatMessage(candidate.id, newQuestion.question);
       setUserAnswer('');
+
     } catch (error: any) {
       console.error(error);
       setQuestionError(true);
       toast({
         variant: 'destructive',
         title: 'Failed to get question.',
-        description: error.message || "Please click 'Next Question' to try again.",
+        description: "There was an issue loading the next question. Please click 'Retry' to try again.",
       });
     } finally {
       setIsLoading(false);
@@ -218,7 +228,7 @@ export function ChatInterface() {
         <div className="mt-4">
             {questionError && !isLoading && (
               <div className="flex justify-center">
-                 <Button onClick={sendNextQuestion}>Next Question</Button>
+                 <Button onClick={sendNextQuestion}>Retry</Button>
               </div>
             )}
             {!isLoading && !questionError && currentQuestion && (

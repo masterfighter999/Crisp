@@ -3,6 +3,7 @@
 
 import {
   generateInterviewQuestion,
+  GenerateInterviewQuestionInput,
 } from '@/ai/flows/generate-interview-questions';
 import {
   promptForMissingInformation,
@@ -48,5 +49,18 @@ export async function parseResumeAction(input: ParseResumeInput) {
   } catch (error) {
     console.error('Error in parseResumeAction:', error);
     return { name: '', email: '', phone: ''};
+  }
+}
+
+export async function generateQuestionAction(
+  input: GenerateInterviewQuestionInput
+): Promise<string> {
+  try {
+    const question = await generateInterviewQuestion(input);
+    return question;
+  } catch (error) {
+    console.error('Error generating question:', error);
+    // Return a hardcoded question as a final fallback
+    return 'Explain the difference between `let`, `const`, and `var` in JavaScript.';
   }
 }
