@@ -13,15 +13,7 @@ export type TextQuestion = {
   difficulty: QuestionDifficulty;
 }
 
-export type MCQQuestion = {
-  type: 'mcq';
-  question: string;
-  difficulty: QuestionDifficulty;
-  options: string[];
-  correctAnswer: string;
-}
-
-export type InterviewQuestion = TextQuestion | MCQQuestion;
+export type InterviewQuestion = TextQuestion;
 
 
 export interface ChatMessage {
@@ -32,7 +24,7 @@ export interface ChatMessage {
 export interface InterviewRecord {
   status: InterviewStatus;
   questions: InterviewQuestion[];
-  answers: (string | number)[]; // string for text, number for MCQ index
+  answers: string[];
   currentQuestionIndex: number;
   score: number | null;
   summary: string | null;

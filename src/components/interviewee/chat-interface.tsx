@@ -12,8 +12,6 @@ import { Bot, User, Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import type { ChatMessage, InterviewQuestion } from '@/lib/types';
-import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
-import { Label } from '../ui/label';
 
 export function ChatInterface() {
   const {
@@ -27,7 +25,6 @@ export function ChatInterface() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
-  const [selectedMcqOption, setSelectedMcqOption] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(100);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -67,7 +64,6 @@ export function ChatInterface() {
         await addAiChatMessage(candidate.id, newQuestion.question);
         // Reset answer state for new question
         setUserAnswer('');
-        setSelectedMcqOption(null);
     } else {
         toast({
             variant: 'destructive',
@@ -82,18 +78,9 @@ export function ChatInterface() {
     if (timerRef.current) clearInterval(timerRef.current);
     if (!candidate || !currentQuestion) return;
 
-    let answerToSubmit: string | number;
-    let answerForChat: string;
-
-    if (currentQuestion.type === 'mcq') {
-        answerToSubmit = selectedMcqOption ?? -1; // -1 for unanswered
-        answerForChat = selectedMcqOption !== null ? currentQuestion.options[selectedMcqOption] : "Time's up! No answer provided.";
-    } else {
-        answerToSubmit = userAnswer.trim() || "Time's up! No answer provided.";
-        answerForChat = answerToSubmit;
-    }
-
-    await addUserChatMessage(candidate.id, answerForChat);
+    const answerToSubmit = userAnswer.trim() || "Time's up! No answer provided.";
+    
+    await addUserChatMessage(candidate.id, answerToSubmit);
     await submitAnswer(candidate.id, answerToSubmit);
     // State will refresh via useEffect, triggering next question
   };
@@ -161,13 +148,15 @@ export function ChatInterface() {
             <Card className="w-full max-w-3xl mx-auto mt-8">
               <CardHeader className="text-center">
                   <CardTitle>Finalizing Your Results</CardTitle>
-                  <CardDescription>This may take a moment.</CardDescription>
+                  <CardDescription>
+                    The AI is analyzing your full interview transcript to generate a detailed performance summary and a final score. This may take a moment.
+                  </CardDescription>
               </CardHeader>
               <CardContent className="flex justify-center items-center h-96">
                   <div className="flex flex-col items-center space-y-4 text-center">
                       <Loader2 className="size-8 animate-spin text-primary" />
                       <p className="text-muted-foreground max-w-md">
-                          The AI is analyzing your full interview transcript to generate a detailed performance summary and a final score.
+                          Analyzing answers...
                       </p>
                   </div>
               </CardContent>
@@ -208,30 +197,13 @@ export function ChatInterface() {
                     <Progress value={progressPercentage} className="w-full [&>div]:bg-accent" />
                 </div>
                 <form onSubmit={(e: FormEvent) => {e.preventDefault(); handleAnswerSubmit()}} className="relative">
-                    {currentQuestion.type === 'text' && (
-                        <Textarea 
-                            placeholder="Type your answer here..."
-                            value={userAnswer}
-                            onChange={(e) => setUserAnswer(e.target.value)}
-                            className="pr-20 min-h-[80px]"
-                            disabled={isLoading || isQuestionAnswered}
-                        />
-                    )}
-                    {currentQuestion.type === 'mcq' && (
-                        <RadioGroup 
-                            className="space-y-2" 
-                            value={selectedMcqOption?.toString()}
-                            onValueChange={(val) => setSelectedMcqOption(parseInt(val))}
-                            disabled={isLoading || isQuestionAnswered}
-                        >
-                            {currentQuestion.options.map((option, index) => (
-                                <div key={index} className="flex items-center space-x-2 rounded-md border p-3">
-                                    <RadioGroupItem value={index.toString()} id={`option-${index}`} />
-                                    <Label htmlFor={`option-${index}`} className="flex-grow cursor-pointer">{option}</Label>
-                                </div>
-                            ))}
-                        </RadioGroup>
-                    )}
+                    <Textarea 
+                        placeholder="Type your answer here..."
+                        value={userAnswer}
+                        onChange={(e) => setUserAnswer(e.target.value)}
+                        className="pr-20 min-h-[80px]"
+                        disabled={isLoading || isQuestionAnswered}
+                    />
 
                     <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={isLoading || isQuestionAnswered}>
                         <Send className="size-4" />

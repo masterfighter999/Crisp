@@ -6,9 +6,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { firestore } from './firebase';
 
-export const INTERVIEW_SCHEDULE: { difficulty: 'Easy' | 'Medium' | 'Hard'; type: 'mcq' | 'text'; duration: number }[] = [
-  { difficulty: 'Easy', type: 'mcq', duration: 20 },
-  { difficulty: 'Easy', type: 'mcq', duration: 20 },
+export const INTERVIEW_SCHEDULE: { difficulty: 'Easy' | 'Medium' | 'Hard'; type: 'text'; duration: number }[] = [
+  { difficulty: 'Easy', type: 'text', duration: 20 },
+  { difficulty: 'Easy', type: 'text', duration: 20 },
   { difficulty: 'Medium', type: 'text', duration: 60 },
   { difficulty: 'Medium', type: 'text', duration: 60 },
   { difficulty: 'Hard', type: 'text', duration: 120 },
@@ -29,7 +29,7 @@ interface InterviewState {
   addAiChatMessage: (candidateId: string, content: string) => Promise<void>;
   addUserChatMessage: (candidateId: string, content: string) => Promise<void>;
   addQuestion: (candidateId: string, question: InterviewQuestion) => Promise<void>;
-  submitAnswer: (candidateId: string, answer: string | number) => Promise<void>;
+  submitAnswer: (candidateId: string, answer: string) => Promise<void>;
   completeInterview: (candidateId: string, summary: string, score: number) => Promise<void>;
   getActiveCandidate: () => Candidate | null;
   startOver: (candidateId: string) => Promise<void>;
