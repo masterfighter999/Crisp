@@ -26,11 +26,11 @@ export function ChatInterface() {
   } = useInterviewStore();
 
   const [isLoading, setIsLoading] = useState(false);
-  const [isFetchingQuestion, setIsFetchingQuestion] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
   const [timeLeft, setTimeLeft] = useState(0);
   const [questionError, setQuestionError] = useState(false);
-
+  
+  const isFetchingQuestionRef = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -51,13 +51,14 @@ export function ChatInterface() {
 
 
   const sendNextQuestion = useCallback(async () => {
-    if (!candidate || isFetchingQuestion) return;
+    if (!candidate || isFetchingQuestionRef.current) return;
 
+    // Guard: Only fetch a new question if we are expecting one.
     if (candidate.interview.questions.length !== candidate.interview.answers.length) {
       return;
     }
 
-    setIsFetchingQuestion(true);
+    isFetchingQuestionRef.current = true;
     setIsLoading(true);
     setQuestionError(false);
 
@@ -96,9 +97,9 @@ export function ChatInterface() {
       });
     } finally {
       setIsLoading(false);
-      setIsFetchingQuestion(false);
+      isFetchingQuestionRef.current = false;
     }
-  }, [candidate, scheduleItem, questionBank, addQuestion, addAiChatMessage, toast, isFetchingQuestion]);
+  }, [candidate, scheduleItem, questionBank, addQuestion, addAiChatMessage, toast]);
   
   const handleAnswerSubmit = useCallback(async () => {
     if (timerRef.current) clearInterval(timerRef.current);
