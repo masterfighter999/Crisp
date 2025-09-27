@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { useAuth } from '@/context/auth-context';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -42,9 +43,11 @@ interface TokenEntry {
   id: string;
   email: string;
   token: string;
+  companyDomain: string;
 }
 
 export function AddCandidate() {
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [generatedTokens, setGeneratedTokens] = useState<TokenEntry[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -54,13 +57,23 @@ export function AddCandidate() {
     resolver: zodResolver(formSchema),
     defaultValues: { email: '' },
   });
+  
+  const getCompanyDomain = () => {
+      if (!user || !user.email) return null;
+      if (user.email === 'swayam.internship@gmail.com') return 'admin'; // Special case for admin
+      return user.email.substring(user.email.lastIndexOf('@') + 1);
+  }
 
   useEffect(() => {
     const fetchTokens = async () => {
+      if (!user) return;
       setIsLoading(true);
       try {
+        const companyDomain = getCompanyDomain();
+        if (!companyDomain) return;
+
         const tokensCollection = collection(firestore, 'interviewTokens');
-        const q = query(tokensCollection, orderBy('createdAt', 'desc'));
+        const q = query(tokensCollection, where('companyDomain', '==', companyDomain), orderBy('createdAt', 'desc'));
         const querySnapshot = await getDocs(q);
         const tokens = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as TokenEntry));
         setGeneratedTokens(tokens);
@@ -76,20 +89,24 @@ export function AddCandidate() {
       }
     };
     fetchTokens();
-  }, [toast]);
+  }, [toast, user]);
 
   const addEmailAndGenerateToken = async (email: string): Promise<TokenEntry | null> => {
-    if (!email) return null;
+    if (!email || !user) return null;
+    
+    const companyDomain = getCompanyDomain();
+    if (!companyDomain) return null;
 
     const tokensCollection = collection(firestore, 'interviewTokens');
-    const q = query(tokensCollection, where('email', '==', email));
+    // Check for token for the same email within the same company
+    const q = query(tokensCollection, where('email', '==', email), where('companyDomain', '==', companyDomain));
     const querySnapshot = await getDocs(q);
 
     if (!querySnapshot.empty) {
       toast({
         variant: 'destructive',
         title: 'Email Exists',
-        description: `A token already exists for ${email}.`,
+        description: `A token already exists for ${email} in your organization.`,
       });
       return null;
     }
@@ -101,8 +118,9 @@ export function AddCandidate() {
         token,
         createdAt: Timestamp.now(),
         isValid: true,
+        companyDomain,
       });
-      return { id: docRef.id, email, token };
+      return { id: docRef.id, email, token, companyDomain };
     } catch (error) {
       console.error('Error adding document: ', error);
       toast({
@@ -203,7 +221,7 @@ export function AddCandidate() {
       <CardHeader>
         <CardTitle>Manage Candidate Access</CardTitle>
         <CardDescription>
-          Add candidate emails to generate unique interview tokens.
+          Add candidate emails to generate unique interview tokens for your organization.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

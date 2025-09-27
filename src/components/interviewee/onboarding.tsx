@@ -44,15 +44,17 @@ export function Onboarding() {
   useEffect(() => {
     const initializeCandidate = async () => {
       if (activeToken && !activeCandidateId) {
-        // Fetch the email associated with the token
+        // Fetch the token document to get email and companyDomain
         const tokensCollection = collection(firestore, 'interviewTokens');
         const q = query(tokensCollection, where('token', '==', activeToken));
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
-          const tokenDoc = querySnapshot.docs[0];
-          const email = tokenDoc.data().email;
-          await createCandidate(email);
+          const tokenDoc = querySnapshot.docs[0].data();
+          const email = tokenDoc.email;
+          const companyDomain = tokenDoc.companyDomain;
+          // Pass companyDomain when creating candidate
+          await createCandidate(email, companyDomain);
           form.setValue('email', email);
         }
       } else if (activeCandidate) {

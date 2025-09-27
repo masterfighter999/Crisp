@@ -39,4 +39,5 @@ export interface Candidate {
     size: number;
   } | null;
   interview: InterviewRecord;
+  companyDomain?: string; // Added to partition data by company
 }

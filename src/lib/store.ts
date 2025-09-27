@@ -21,7 +21,7 @@ interface InterviewState {
   activeToken: string | null;
   hydrated: boolean;
   fetchCandidate: (candidateId: string) => Promise<void>;
-  createCandidate: (email: string) => Promise<string>;
+  createCandidate: (email: string, companyDomain?: string) => Promise<string>;
   updateCandidateInfo: (id: string, info: { name: string; email: string; phone: string; resumeFile: Candidate['resumeFile'] }) => Promise<void>;
   deleteCandidate: (id: string) => Promise<void>;
   setInterviewStatus: (candidateId: string, status: InterviewStatus) => Promise<void>;
@@ -84,14 +84,10 @@ export const useInterviewStore = create<InterviewState>()(
             console.error("Error fetching candidate from Firestore: ", error);
         }
       },
-      createCandidate: async (email) => {
-        const existingCandidate = get().candidates.find(c => c.email === email);
-        if (existingCandidate) {
-          set({ activeCandidateId: existingCandidate.id });
-          await get().fetchCandidate(existingCandidate.id);
-          return existingCandidate.id;
-        }
-
+      createCandidate: async (email, companyDomain) => {
+        // A user can interview for multiple companies, so we don't check for existing email here anymore.
+        // Uniqueness will be handled by the interview token process.
+        
         const id = uuidv4();
         const newCandidate: Candidate = {
           id,
@@ -100,6 +96,7 @@ export const useInterviewStore = create<InterviewState>()(
           phone: '',
           resumeFile: null,
           interview: { ...initialInterviewRecord },
+          companyDomain, // Tag candidate with company domain
         };
         
         await updateFirestoreCandidate(newCandidate);
