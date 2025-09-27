@@ -10,7 +10,6 @@ import { signOut } from 'firebase/auth';
 
 import { Logo } from './logo';
 import { Button } from './ui/button';
-import { SignupModal } from './auth/signup-modal';
 import { LogOut, LayoutDashboard, User as UserIcon, ShieldAlert } from 'lucide-react';
 import {
   DropdownMenu,
@@ -28,7 +27,6 @@ export function Header() {
   const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [isSignupModalOpen, setSignupModalOpen] = useState(false);
   const resetActiveCandidate = useInterviewStore(s => s.resetActiveCandidate);
   const [allowedDomains, setAllowedDomains] = useState<string[]>([]);
   
@@ -89,7 +87,6 @@ export function Header() {
 
   return (
     <>
-      <SignupModal isOpen={isSignupModalOpen} onClose={() => setSignupModalOpen(false)} />
       <header className="border-b">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
@@ -159,7 +156,6 @@ export function Header() {
                        <Button variant="ghost" onClick={() => router.push('/admin/login')}>
                         Admin Login
                       </Button>
-                      <Button onClick={() => setSignupModalOpen(true)}>Request Access</Button>
                     </>
                  )
               )}

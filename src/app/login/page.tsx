@@ -14,6 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Header } from '@/components/header';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { SignupModal } from '@/components/auth/signup-modal';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -24,6 +25,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isSignupModalOpen, setSignupModalOpen] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -50,52 +52,61 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
-      <main className="flex-grow flex items-center justify-center">
-        <Card className="w-full max-w-sm">
-          <CardHeader>
-            <CardTitle>Interviewer Login</CardTitle>
-            <CardDescription>Enter your credentials to access the dashboard.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email Address</FormLabel>
-                      <FormControl>
-                        <Input placeholder="you@interviewer.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Log In
+    <>
+      <SignupModal isOpen={isSignupModalOpen} onClose={() => setSignupModalOpen(false)} />
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-grow flex items-center justify-center">
+          <Card className="w-full max-w-sm">
+            <CardHeader>
+              <CardTitle>Interviewer Login</CardTitle>
+              <CardDescription>Enter your credentials to access the dashboard.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email Address</FormLabel>
+                        <FormControl>
+                          <Input placeholder="you@interviewer.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="••••••••" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Log In
+                  </Button>
+                </form>
+              </Form>
+               <p className="mt-6 text-center text-sm text-muted-foreground">
+                Need access?{' '}
+                <Button variant="link" className="p-0 h-auto" onClick={() => setSignupModalOpen(true)}>
+                  Request Access
                 </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      </main>
-    </div>
+              </p>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    </>
   );
 }
