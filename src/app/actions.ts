@@ -1,8 +1,10 @@
+// src/app/actions.ts
 'use server';
 
 import {
   generateInterviewQuestion,
   type GenerateInterviewQuestionInput,
+  type GenerateInterviewQuestionOutput,
 } from '@/ai/flows/generate-interview-questions';
 import {
   promptForMissingInformation,
@@ -19,13 +21,18 @@ import {
 
 export async function getInterviewQuestion(
   input: GenerateInterviewQuestionInput
-) {
+): Promise<GenerateInterviewQuestionOutput> {
   try {
     const result = await generateInterviewQuestion(input);
     return result;
   } catch (error) {
     console.error('Error in getInterviewQuestion:', error);
-    return { question: 'Sorry, I could not generate a question. Let\'s try another one.' };
+    // Return a valid TextQuestion object on error to prevent state corruption.
+    return {
+      type: 'text',
+      difficulty: input.difficulty,
+      question: "Sorry, I could not generate a question. Let's try another one.",
+    };
   }
 }
 
