@@ -41,7 +41,7 @@ export function CandidateAuth() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const { setToken } = useInterviewStore();
+  const { setToken, fetchAllQuestions } = useInterviewStore();
   const { user } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -53,7 +53,7 @@ export function CandidateAuth() {
     setIsLoading(true);
     try {
       await signInAnonymously(auth);
-      // The component will re-render with the token form
+      await fetchAllQuestions();
     } catch (error: any) {
        toast({
         variant: 'destructive',
@@ -84,6 +84,7 @@ export function CandidateAuth() {
             'The token is either incorrect or has already been used.',
         });
       } else {
+        await fetchAllQuestions();
         setToken(values.token);
         router.push('/interview');
       }

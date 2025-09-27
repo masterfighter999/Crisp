@@ -20,6 +20,8 @@ interface InterviewState {
   activeCandidateId: string | null;
   activeToken: string | null;
   hydrated: boolean;
+  questionBank: InterviewQuestion[];
+  fetchAllQuestions: () => Promise<void>;
   fetchCandidate: (candidateId: string) => Promise<void>;
   createCandidate: (email: string, companyDomain?: string) => Promise<string>;
   updateCandidateInfo: (id: string, info: { name: string; email: string; phone: string; resumeFile: Candidate['resumeFile'] }) => Promise<void>;
@@ -66,9 +68,21 @@ export const useInterviewStore = create<InterviewState>()(
       activeCandidateId: null,
       activeToken: null,
       hydrated: false,
+      questionBank: [],
       setHydrated: (state) => set({ hydrated: state }),
       setToken: (token) => {
         set({ activeToken: token });
+      },
+      fetchAllQuestions: async () => {
+        try {
+          const questionsCollection = collection(firestore, 'interviewQuestions');
+          const querySnapshot = await getDocs(questionsCollection);
+          const questions = querySnapshot.docs.map(doc => doc.data() as InterviewQuestion);
+          set({ questionBank: questions });
+          console.log(`Fetched ${questions.length} questions into the question bank.`);
+        } catch (error) {
+          console.error("Error fetching all questions from Firestore: ", error);
+        }
       },
       fetchCandidate: async (candidateId) => {
         try {
@@ -85,9 +99,6 @@ export const useInterviewStore = create<InterviewState>()(
         }
       },
       createCandidate: async (email, companyDomain) => {
-        // A user can interview for multiple companies, so we don't check for existing email here anymore.
-        // Uniqueness will be handled by the interview token process.
-        
         const id = uuidv4();
         const newCandidate: Candidate = {
           id,
@@ -96,7 +107,7 @@ export const useInterviewStore = create<InterviewState>()(
           phone: '',
           resumeFile: null,
           interview: { ...initialInterviewRecord },
-          companyDomain, // Tag candidate with company domain
+          companyDomain,
         };
         
         await updateFirestoreCandidate(newCandidate);
@@ -276,8 +287,6 @@ export const useInterviewStore = create<InterviewState>()(
         const token = get().activeToken;
         if (token) {
             try {
-                // In a real app, this should be a Cloud Function for security.
-                // For this prototype, we do it client-side.
                 const tokensCollection = collection(firestore, 'interviewTokens');
                 const q = query(tokensCollection, where('token', '==', token));
                 const querySnapshot = await getDocs(q);
@@ -308,7 +317,7 @@ export const useInterviewStore = create<InterviewState>()(
                   phone: '',
                   resumeFile: null,
                   interview: { ...initialInterviewRecord, status: 'COLLECTING_INFO' },
-                  email, // preserve email and companyDomain
+                  email,
                   companyDomain,
                 };
                 return updatedCandidate;
@@ -321,7 +330,7 @@ export const useInterviewStore = create<InterviewState>()(
         }
       },
       resetActiveCandidate: () => {
-        set({ activeCandidateId: null, activeToken: null });
+        set({ activeCandidateId: null, activeToken: null, questionBank: [] });
       },
     }),
     {

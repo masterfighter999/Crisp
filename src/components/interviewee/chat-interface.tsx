@@ -2,7 +2,7 @@
 'use client';
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useInterviewStore, INTERVIEW_SCHEDULE } from '@/lib/store';
-import { getInterviewSummary, getInterviewQuestion } from '@/app/actions';
+import { getInterviewSummary } from '@/app/actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Bot, User, Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import type { ChatMessage } from '@/lib/types';
+import type { ChatMessage, InterviewQuestion } from '@/lib/types';
 
 export function ChatInterface() {
   const {
@@ -22,6 +22,7 @@ export function ChatInterface() {
     addUserChatMessage,
     addQuestion,
     completeInterview,
+    questionBank,
   } = useInterviewStore();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -55,19 +56,28 @@ export function ChatInterface() {
     setQuestionError(false);
 
     try {
-      const newQuestion = await getInterviewQuestion({
-        difficulty: scheduleItem.difficulty,
-        topic: 'full stack',
-      });
+      const availableQuestions = questionBank.filter(q => q.difficulty === scheduleItem.difficulty);
+      if (availableQuestions.length === 0) {
+        throw new Error(`No questions found in question bank for difficulty: ${scheduleItem.difficulty}`);
+      }
+      
+      const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+      const newQuestion = availableQuestions[randomIndex];
+
+      if (!newQuestion) {
+        throw new Error('Failed to select a question from the local bank.');
+      }
+
       await addQuestion(candidate.id, newQuestion);
       await addAiChatMessage(candidate.id, newQuestion.question);
       setUserAnswer('');
     } catch (error: any) {
+      console.error(error);
       setQuestionError(true);
       toast({
         variant: 'destructive',
-        title: 'Failed to generate question.',
-        description: "Please click 'Next Question' to try again.",
+        title: 'Failed to get question.',
+        description: error.message || "Please click 'Next Question' to try again.",
       });
     } finally {
       setIsLoading(false);
@@ -82,29 +92,23 @@ export function ChatInterface() {
     
     await addUserChatMessage(candidate.id, answerToSubmit);
     await submitAnswer(candidate.id, answerToSubmit);
-    // The state change will trigger the useEffect below to fetch the next question.
   };
 
-  // Effect to fetch the next question
   useEffect(() => {
     if (candidate?.interview.status === 'IN_PROGRESS') {
       const answersCount = candidate.interview.answers.length;
       const questionsCount = candidate.interview.questions.length;
 
-      // If we have an answer for every question we have, it's time to get a new one.
       if (answersCount === questionsCount && questionsCount < INTERVIEW_SCHEDULE.length) {
           sendNextQuestion();
       } else if (questionsCount === 0 && answersCount === 0) {
-        // Initial question fetch
         sendNextQuestion();
       }
     }
   }, [candidate?.id, candidate?.interview.answers.length]);
 
 
-  // Effect to start timer when a new question is ready
   useEffect(() => {
-    // A new question is ready if it exists and we haven't answered it yet.
     if (currentQuestion && !hasAnsweredCurrent && !isLoading && candidate?.interview.status === 'IN_PROGRESS') {
       const duration = scheduleItem.duration;
       setTimeLeft(duration);
@@ -121,7 +125,6 @@ export function ChatInterface() {
       }, 1000);
     }
     
-    // Cleanup timer
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -132,9 +135,8 @@ export function ChatInterface() {
   const finalizeInterview = async () => {
     if (!candidate || candidate.interview.status === 'COMPLETED') return;
     
-    setIsLoading(true); // Show a finalizing message
+    setIsLoading(true);
     
-    // Check if the finalization message is already there
     const finalizingMessage = 'Thank you for completing the interview. I am now generating your performance summary...';
     if (!candidate.interview.chatHistory.some(m => m.content === finalizingMessage)) {
        await addAiChatMessage(candidate.id, finalizingMessage);
@@ -159,7 +161,6 @@ export function ChatInterface() {
     setIsLoading(false);
   };
   
-  // Effect to finalize the interview when all questions are answered
   useEffect(() => {
     if (candidate?.interview.status === 'IN_PROGRESS' && candidate.interview.answers.length === INTERVIEW_SCHEDULE.length) {
       finalizeInterview();
@@ -278,7 +279,7 @@ function LoadingSpinner() {
             </Avatar>
             <div className="max-w-md p-3 rounded-lg bg-background flex items-center space-x-2">
                 <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Generating question...</span>
+                <span className="text-sm text-muted-foreground">Getting question...</span>
             </div>
         </div>
     )
