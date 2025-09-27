@@ -35,6 +35,20 @@ export default function LoginPage() {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
+
+    const isInterviewerEmail = values.email.toLowerCase().endsWith('@interviewer.com');
+    const isAdminEmail = values.email.toLowerCase() === 'swayam.internship@gmail.com';
+
+    if (!isInterviewerEmail && !isAdminEmail) {
+      toast({
+        variant: 'destructive',
+        title: 'Unauthorized Domain',
+        description: 'This email address is not authorized for interviewer access.',
+      });
+      setIsLoading(false);
+      return;
+    }
+    
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
       router.push('/dashboard');
@@ -67,7 +81,7 @@ export default function LoginPage() {
                     <FormItem>
                       <FormLabel>Email Address</FormLabel>
                       <FormControl>
-                        <Input placeholder="you@example.com" {...field} />
+                        <Input placeholder="you@interviewer.com" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
