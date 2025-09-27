@@ -222,7 +222,7 @@ export function ChatInterface() {
       </CardHeader>
       <CardContent className="flex-grow flex flex-col min-h-0">
         <ScrollArea className="flex-grow pr-4 -mr-4">
-              <div className="space-y-6 p-4 pb-4">
+              <div className="space-y-6 px-4 pt-4 pb-8">
                 {candidate.interview.chatHistory.map((message, index) => (
                     <ChatMessageItem key={index} message={message} />
                 ))}
@@ -300,5 +300,7 @@ function LoadingSpinner() {
         </div>
     )
 }
+
+    
 
     
