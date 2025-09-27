@@ -6,6 +6,7 @@ import withAuth from '@/components/auth/with-auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShieldCheck } from 'lucide-react';
 import { DomainManager } from '@/components/admin/domain-manager';
+import { QuestionManager } from '@/components/admin/question-manager';
 
 function AdminDashboardPage() {
   return (
@@ -29,6 +30,7 @@ function AdminDashboardPage() {
                     </CardContent>
                </Card>
                <DomainManager />
+               <QuestionManager />
            </div>
         </ClientOnly>
       </main>
