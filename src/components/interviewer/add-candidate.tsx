@@ -156,12 +156,20 @@ export function AddCandidate() {
           const workbook = XLSX.read(data, { type: 'array' });
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
-          const json = XLSX.utils.sheet_to_json<{ email: string }>(worksheet);
+          
+          // Use sheet_to_json with header: 1 to get an array of arrays.
+          const rows = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 });
+          
+          // Check if the first row looks like a header (i.e., not an email)
+          const firstRowFirstCell = rows[0]?.[0] || '';
+          const hasHeader = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(firstRowFirstCell);
+          
+          // If there is a header, start from the second row, otherwise start from the first.
+          const dataRows = hasHeader ? rows.slice(1) : rows;
 
-          const tokenPromises = json
-            .map(row => row.email?.trim())
-            .filter((email): email is string => !!email)
-            .map(email => addEmailAndGenerateToken(email));
+          const emails = dataRows.map(row => row[0]?.trim()).filter(email => !!email);
+
+          const tokenPromises = emails.map(email => addEmailAndGenerateToken(email));
           
           const newEntries = (await Promise.all(tokenPromises)).filter((entry): entry is TokenEntry => entry !== null);
           
@@ -169,7 +177,7 @@ export function AddCandidate() {
             setGeneratedTokens(prev => [...newEntries, ...prev]);
           }
           
-          toast({ title: "XLSX Processed", description: `${newEntries.length} new tokens generated.` });
+          toast({ title: "XLSX Processed", description: `${newEntries.length} new tokens generated from ${emails.length} unique emails.` });
 
         } catch (error) {
            toast({ title: "XLSX Processing Failed", description: "There was an error processing the file." });
@@ -232,7 +240,7 @@ export function AddCandidate() {
                 <div className="text-center">
                   <UploadCloud className="mx-auto h-10 w-10 text-muted-foreground" />
                   <p className="mt-2 text-sm text-muted-foreground">Click to upload or drag and drop</p>
-                  <p className="text-xs text-muted-foreground">XLSX file with an 'email' column</p>
+                  <p className="text-xs text-muted-foreground">XLSX file with emails in the first column</p>
                 </div>
               </div>
               <input
