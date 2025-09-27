@@ -26,19 +26,24 @@ const prompt = ai.definePrompt({
   input: {schema: GenerateAllInterviewQuestionsInputSchema},
   output: {schema: GenerateAllInterviewQuestionsOutputSchema},
   prompt: `You are an AI assistant designed to generate interview questions for full stack developer roles.
-  Your task is to generate a series of interview questions based on the provided schedule of difficulties.
-  
+  Your task is to generate a series of interview questions based on the provided schedule.
   The topic for all questions is: {{topic}}.
 
-  Generate one question for each of the following difficulties:
+  Generate one question for each of the following types and difficulties:
   {{#each schedule}}
-  - {{this.difficulty}}
+  - Type: {{this.type}}, Difficulty: {{this.difficulty}}
   {{/each}}
   
   Instructions:
   - The questions should be technically challenging and relevant to modern full stack development practices, focusing on React and Node.js.
+  - For 'text' type questions, provide a clear, open-ended technical question.
+  - For 'mcq' (multiple-choice question) type questions:
+    - Provide a clear question.
+    - Provide exactly 4 options.
+    - One of the options must be the correct answer.
+    - The 'correctAnswer' field must exactly match one of the strings in the 'options' array.
   - Ensure the questions are clear, concise, and appropriate for the specified difficulty level.
-  - Return the output as a JSON object containing a 'questions' array. Each object in the array should have a 'question' and its corresponding 'difficulty'.
+  - Return the output as a JSON object containing a 'questions' array. Each object in the array must conform to the schema (text or mcq).
   - Do not add any conversational text, preamble, or extraneous explanations in your response.
   `,
 });

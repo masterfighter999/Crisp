@@ -11,7 +11,9 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Bot, User, Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import type { ChatMessage } from '@/lib/types';
+import type { ChatMessage, InterviewQuestion } from '@/lib/types';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { Label } from '../ui/label';
 
 export function ChatInterface() {
   const {
@@ -24,6 +26,7 @@ export function ChatInterface() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
+  const [selectedMcqOption, setSelectedMcqOption] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(100);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -59,17 +62,30 @@ export function ChatInterface() {
           setIsLoading(true);
           await addAiChatMessage(candidate.id, nextQuestion.question);
           setIsLoading(false);
+          // Reset answer state for new question
+          setUserAnswer('');
+          setSelectedMcqOption(null);
       }
   };
   
   const handleAnswerSubmit = async () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    if (candidate) {
-      const answerToSubmit = userAnswer.trim() || "Time's up! No answer provided.";
-      await addUserChatMessage(candidate.id, answerToSubmit);
-      await submitAnswer(candidate.id, answerToSubmit);
-      setUserAnswer('');
+    if (!candidate || !currentQuestion) return;
+
+    let answerToSubmit: string | number;
+    let answerForChat: string;
+
+    if (currentQuestion.type === 'mcq') {
+        answerToSubmit = selectedMcqOption ?? -1; // -1 for unanswered
+        answerForChat = selectedMcqOption !== null ? currentQuestion.options[selectedMcqOption] : "Time's up! No answer provided.";
+    } else {
+        answerToSubmit = userAnswer.trim() || "Time's up! No answer provided.";
+        answerForChat = answerToSubmit;
     }
+
+    await addUserChatMessage(candidate.id, answerForChat);
+    await submitAnswer(candidate.id, answerToSubmit);
+    // State will refresh via useEffect, triggering next question
   };
 
   useEffect(() => {
@@ -88,7 +104,7 @@ export function ChatInterface() {
 
 
   useEffect(() => {
-    if (currentQuestion && scheduleItem && !isLoading) {
+    if (currentQuestion && scheduleItem && !isLoading && candidate?.interview.answers.length === currentQuestionIndex) {
       const duration = scheduleItem.duration;
       setTimeLeft(duration);
       timerRef.current = setInterval(() => {
@@ -105,7 +121,7 @@ export function ChatInterface() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [currentQuestion, isLoading]);
+  }, [currentQuestion, isLoading, candidate?.interview.answers.length]);
   
   const finalizeInterview = async () => {
     if (!candidate || candidate.interview.status === 'COMPLETED') return;
@@ -132,7 +148,7 @@ export function ChatInterface() {
   
   const progressPercentage = scheduleItem ? (timeLeft / scheduleItem.duration) * 100 : 0;
   
-  if (!candidate || !scheduleItem) {
+  if (!candidate || !currentQuestion || !scheduleItem) {
      if (candidate && candidate.interview.status === 'IN_PROGRESS' && currentQuestionIndex >= INTERVIEW_SCHEDULE.length) {
        // This handles the case where the interview is finished but summary is being generated.
         return (
@@ -154,6 +170,8 @@ export function ChatInterface() {
      }
       return null;
   }
+
+  const isQuestionAnswered = candidate.interview.answers.length > currentQuestionIndex;
 
   return (
     <Card className="w-full max-w-3xl mx-auto mt-8">
@@ -184,14 +202,32 @@ export function ChatInterface() {
                 <Progress value={progressPercentage} className="w-full [&>div]:bg-accent" />
             </div>
             <form onSubmit={(e: FormEvent) => {e.preventDefault(); handleAnswerSubmit()}} className="relative">
-                <Textarea 
-                    placeholder="Type your answer here..."
-                    value={userAnswer}
-                    onChange={(e) => setUserAnswer(e.target.value)}
-                    className="pr-20 min-h-[80px]"
-                    disabled={isLoading || currentQuestionIndex >= INTERVIEW_SCHEDULE.length}
-                />
-                <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={isLoading || currentQuestionIndex >= INTERVIEW_SCHEDULE.length}>
+                {currentQuestion.type === 'text' && (
+                    <Textarea 
+                        placeholder="Type your answer here..."
+                        value={userAnswer}
+                        onChange={(e) => setUserAnswer(e.target.value)}
+                        className="pr-20 min-h-[80px]"
+                        disabled={isLoading || isQuestionAnswered}
+                    />
+                )}
+                 {currentQuestion.type === 'mcq' && (
+                    <RadioGroup 
+                        className="space-y-2" 
+                        value={selectedMcqOption?.toString()}
+                        onValueChange={(val) => setSelectedMcqOption(parseInt(val))}
+                        disabled={isLoading || isQuestionAnswered}
+                    >
+                        {currentQuestion.options.map((option, index) => (
+                            <div key={index} className="flex items-center space-x-2 rounded-md border p-3">
+                                <RadioGroupItem value={index.toString()} id={`option-${index}`} />
+                                <Label htmlFor={`option-${index}`} className="flex-grow cursor-pointer">{option}</Label>
+                            </div>
+                        ))}
+                    </RadioGroup>
+                )}
+
+                <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={isLoading || isQuestionAnswered}>
                     <Send className="size-4" />
                 </Button>
             </form>
