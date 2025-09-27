@@ -26,12 +26,12 @@ export function ChatInterface() {
   } = useInterviewStore();
 
   const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
   const [timeLeft, setTimeLeft] = useState(0);
   const [questionError, setQuestionError] = useState(false);
   
   const isFetchingQuestionRef = useRef(false);
+  const isSubmittingRef = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -52,7 +52,6 @@ export function ChatInterface() {
   const sendNextQuestion = useCallback(async () => {
     if (!candidate || isFetchingQuestionRef.current) return;
     
-    // Guard: only fetch if a question is expected
     if (candidate.interview.questions.length !== candidate.interview.answers.length) {
       return;
     }
@@ -85,7 +84,7 @@ export function ChatInterface() {
       await addQuestion(candidate.id, newQuestion);
       await addAiChatMessage(candidate.id, newQuestion.questionText);
       setUserAnswer('');
-      setIsSubmitting(false); // Release the lock after new question is sent
+      isSubmittingRef.current = false; // Release the lock
 
     } catch (error: any) {
       console.error(error);
@@ -95,7 +94,7 @@ export function ChatInterface() {
         title: 'Failed to get question.',
         description: "There was an issue loading the next question. Please click 'Retry' to try again.",
       });
-      setIsSubmitting(false); // Also release lock on error
+      isSubmittingRef.current = false; // Also release lock on error
     } finally {
       setIsLoading(false);
       isFetchingQuestionRef.current = false;
@@ -103,16 +102,21 @@ export function ChatInterface() {
   }, [candidate, scheduleItem, questionBank, addQuestion, addAiChatMessage, toast]);
   
   const handleAnswerSubmit = useCallback(async () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (!candidate || !currentQuestion || isLoading || questionError || hasAnsweredCurrent || isSubmitting) return;
+    if (isSubmittingRef.current) return; // Synchronous check with ref
+    isSubmittingRef.current = true; // Engage lock immediately
 
-    setIsSubmitting(true);
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (!candidate || !currentQuestion || isLoading || questionError) {
+        isSubmittingRef.current = false; // Release lock if we exit early
+        return;
+    }
+
     const answerToSubmit = userAnswer.trim() || "Time's up! No answer provided.";
     
     await addUserChatMessage(candidate.id, answerToSubmit);
     await submitAnswer(candidate.id, answerToSubmit);
 
-  }, [candidate, currentQuestion, isLoading, questionError, userAnswer, addUserChatMessage, submitAnswer, hasAnsweredCurrent, isSubmitting]);
+  }, [candidate, currentQuestion, isLoading, questionError, userAnswer, addUserChatMessage, submitAnswer]);
 
 
   useEffect(() => {
@@ -253,11 +257,11 @@ export function ChatInterface() {
                     value={userAnswer}
                     onChange={(e) => setUserAnswer(e.target.value)}
                     className="pr-20 min-h-[80px]"
-                    disabled={hasAnsweredCurrent || isSubmitting}
+                    disabled={hasAnsweredCurrent || isSubmittingRef.current}
                 />
 
-                <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={hasAnsweredCurrent || isSubmitting}>
-                    {isSubmitting ? <Loader2 className="size-4 animate-spin"/> : <Send className="size-4" />}
+                <Button type="submit" size="icon" className="absolute right-2 bottom-2" disabled={hasAnsweredCurrent || isSubmittingRef.current}>
+                    {isSubmittingRef.current ? <Loader2 className="size-4 animate-spin"/> : <Send className="size-4" />}
                 </Button>
             </form>
           </>
@@ -304,7 +308,3 @@ function LoadingSpinner() {
         </div>
     )
 }
-
-    
-
-    
