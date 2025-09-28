@@ -212,7 +212,7 @@ export function Onboarding() {
   return (
     <Card className="w-full max-w-2xl mx-auto mt-8">
       <CardHeader>
-        <CardTitle>Welcome to AI Interview Ace</CardTitle>
+        <CardTitle>Welcome to Crisp</CardTitle>
         <CardDescription>
           Please upload your resume (PDF required) to auto-fill your information.
         </CardDescription>

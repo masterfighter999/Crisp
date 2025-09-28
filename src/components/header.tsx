@@ -91,7 +91,7 @@ export function Header() {
             <Link href="/" className="flex items-center gap-3">
               <Logo />
               <h1 className="text-xl font-bold tracking-tight text-foreground">
-                AI Interview Ace
+                Crisp
               </h1>
             </Link>
 

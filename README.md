@@ -1,6 +1,6 @@
-# AI Interview Ace
+# Crisp
 
-AI Interview Ace is a web application designed to streamline the technical screening process. It uses AI to conduct automated interviews with candidates, evaluate their performance, and provide detailed feedback to recruiters and hiring managers.
+Crisp is a web application designed to streamline the technical screening process. It uses AI to conduct automated interviews with candidates, evaluate their performance, and provide detailed feedback to recruiters and hiring managers.
 
 ## Live Demo
 

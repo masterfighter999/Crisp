@@ -8,7 +8,7 @@ import { AuthProvider } from '@/context/auth-context';
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: 'AI Interview Ace',
+  title: 'Crisp',
   description: 'AI-powered interview assistant',
 };
 
