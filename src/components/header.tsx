@@ -76,10 +76,8 @@ export function Header() {
   const getUserRole = () => {
     if (isAdmin && (pathname.startsWith('/admin') || pathname.startsWith('/dashboard'))) return 'Admin';
     if (user?.isAnonymous) return 'Candidate (Guest)';
-    if (user?.email) {
-      if (isInterviewer) return 'Interviewer';
-      return 'Candidate';
-    }
+    if (isInterviewer && pathname.startsWith('/dashboard')) return 'Interviewer';
+    if (!isInterviewer) return 'Candidate';
     return 'User';
   };
 
