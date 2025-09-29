@@ -48,6 +48,15 @@ export default function CandidateLoginPage() {
       setIsLoading(false);
     }
   };
+  
+  const handleForgotPassword = () => {
+    // In a real app, this would trigger a password reset flow.
+    // For this demo, we'll just show a toast.
+    toast({
+        title: 'Password Reset',
+        description: "Password reset functionality is not implemented in this demo. Please contact support.",
+    });
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -79,7 +88,12 @@ export default function CandidateLoginPage() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Password</FormLabel>
+                      <div className="flex justify-between items-baseline">
+                         <FormLabel>Password</FormLabel>
+                         <Button variant="link" type="button" onClick={handleForgotPassword} className="px-0 h-auto text-xs">
+                           Forgot Password?
+                         </Button>
+                      </div>
                       <FormControl>
                         <Input type="password" placeholder="••••••••" {...field} />
                       </FormControl>
