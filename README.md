@@ -8,6 +8,9 @@ Crisp is a web application designed to streamline the technical screening proces
 (Interviewer login: swayamchatterjee37@gmail.com | Password - 123456)
 (Admin Login : swayam.internship@gmail.com | Password - 123456)
 
+## Demo Video
+https://drive.google.com/file/d/1AGOMeQifDFmM9cn1h9D_zCNUZgJYRRJV/view?usp=sharing
+
 ## Key Features
 
 ### For Candidates
