@@ -5,8 +5,8 @@ Crisp is a web application designed to streamline the technical screening proces
 ## Live Demo
 
 [View the live deployment here](https://ai-interview-ace.vercel.app/)
-Interviewer login: swayamchatterjee37@gmail.com | Password - 123456
-Admin Login : swayam.internship@gmail.com | Password - 123456
+(Interviewer login: swayamchatterjee37@gmail.com | Password - 123456)
+(Admin Login : swayam.internship@gmail.com | Password - 123456)
 
 ## Key Features
 
